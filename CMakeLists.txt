@@ -185,6 +185,7 @@ set (TDUTILS_TESTS_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/MpmcQueue.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/HazardPointers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/MpscLinkQueue.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/tests/filesystem.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/heap.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/json.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/misc.cpp
