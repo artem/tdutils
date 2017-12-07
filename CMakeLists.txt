@@ -181,7 +181,7 @@ set(TDUTILS_SOURCE
   td/utils/Variant.h
 )
 
-set (TDUTILS_TESTS_SOURCE
+set(TDUTILS_TESTS_SOURCE
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/SharedObjectPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/MpmcWaiter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/tests/MpmcQueue.cpp
