@@ -14,7 +14,7 @@ namespace detail {
 class EventFdLinuxImpl;
 
 class EventFdLinux final : public EventFdBase {
-  std::unique_ptr<EventFdLinuxImpl> impl_;
+  unique_ptr<EventFdLinuxImpl> impl_;
 
  public:
   EventFdLinux();
@@ -35,6 +35,8 @@ class EventFdLinux final : public EventFdBase {
   void release() override;
 
   void acquire() override;
+
+  void wait(int timeout_ms) override;
 };
 
 }  // namespace detail

@@ -25,6 +25,7 @@
 #include <clocale>
 #include <limits>
 #include <locale>
+#include <utility>
 
 using namespace td;
 
@@ -122,7 +123,7 @@ TEST(Misc, errno_tls_bug) {
 }
 
 TEST(Misc, get_last_argument) {
-  auto a = std::make_unique<int>(5);
+  auto a = make_unique<int>(5);
   ASSERT_EQ(*get_last_argument(std::move(a)), 5);
   ASSERT_EQ(*get_last_argument(1, 2, 3, 4, a), 5);
   ASSERT_EQ(*get_last_argument(a), 5);
@@ -253,9 +254,11 @@ TEST(Misc, to_double) {
   test_to_double();
   const char *locale_name = (std::setlocale(LC_ALL, "fr-FR") == nullptr ? "" : "fr-FR");
   std::locale new_locale(locale_name);
-  std::locale::global(new_locale);
+  auto host_locale = std::locale::global(new_locale);
   test_to_double();
-  std::locale::global(std::locale::classic());
+  new_locale = std::locale::global(std::locale::classic());
+  test_to_double();
+  auto classic_locale = std::locale::global(host_locale);
   test_to_double();
 }
 
@@ -444,6 +447,138 @@ TEST(Misc, IPAddress_get_ipv4) {
   test_get_ipv4(0x01020304);
   test_get_ipv4(0x04030201);
   test_get_ipv4(0xFFFFFFFF);
+}
+
+static void test_is_reserved(string ip, bool is_reserved) {
+  IPAddress ip_address;
+  ip_address.init_ipv4_port(ip, 80).ensure();
+  ASSERT_EQ(is_reserved, ip_address.is_reserved());
+}
+
+TEST(Misc, IPAddress_is_reserved) {
+  test_is_reserved("0.0.0.0", true);
+  test_is_reserved("0.255.255.255", true);
+  test_is_reserved("1.0.0.0", false);
+  test_is_reserved("5.0.0.0", false);
+  test_is_reserved("9.255.255.255", false);
+  test_is_reserved("10.0.0.0", true);
+  test_is_reserved("10.255.255.255", true);
+  test_is_reserved("11.0.0.0", false);
+  test_is_reserved("100.63.255.255", false);
+  test_is_reserved("100.64.0.0", true);
+  test_is_reserved("100.127.255.255", true);
+  test_is_reserved("100.128.0.0", false);
+  test_is_reserved("126.255.255.255", false);
+  test_is_reserved("127.0.0.0", true);
+  test_is_reserved("127.255.255.255", true);
+  test_is_reserved("128.0.0.0", false);
+  test_is_reserved("169.253.255.255", false);
+  test_is_reserved("169.254.0.0", true);
+  test_is_reserved("169.254.255.255", true);
+  test_is_reserved("169.255.0.0", false);
+  test_is_reserved("172.15.255.255", false);
+  test_is_reserved("172.16.0.0", true);
+  test_is_reserved("172.31.255.255", true);
+  test_is_reserved("172.32.0.0", false);
+  test_is_reserved("191.255.255.255", false);
+  test_is_reserved("192.0.0.0", true);
+  test_is_reserved("192.0.0.255", true);
+  test_is_reserved("192.0.1.0", false);
+  test_is_reserved("192.0.1.255", false);
+  test_is_reserved("192.0.2.0", true);
+  test_is_reserved("192.0.2.255", true);
+  test_is_reserved("192.0.3.0", false);
+  test_is_reserved("192.88.98.255", false);
+  test_is_reserved("192.88.99.0", true);
+  test_is_reserved("192.88.99.255", true);
+  test_is_reserved("192.88.100.0", false);
+  test_is_reserved("192.167.255.255", false);
+  test_is_reserved("192.168.0.0", true);
+  test_is_reserved("192.168.255.255", true);
+  test_is_reserved("192.169.0.0", false);
+  test_is_reserved("198.17.255.255", false);
+  test_is_reserved("198.18.0.0", true);
+  test_is_reserved("198.19.255.255", true);
+  test_is_reserved("198.20.0.0", false);
+  test_is_reserved("198.51.99.255", false);
+  test_is_reserved("198.51.100.0", true);
+  test_is_reserved("198.51.100.255", true);
+  test_is_reserved("198.51.101.0", false);
+  test_is_reserved("203.0.112.255", false);
+  test_is_reserved("203.0.113.0", true);
+  test_is_reserved("203.0.113.255", true);
+  test_is_reserved("203.0.114.0", false);
+  test_is_reserved("223.255.255.255", false);
+  test_is_reserved("224.0.0.0", true);
+  test_is_reserved("239.255.255.255", true);
+  test_is_reserved("240.0.0.0", true);
+  test_is_reserved("255.255.255.254", true);
+  test_is_reserved("255.255.255.255", true);
+}
+
+static void test_split(Slice str, std::pair<Slice, Slice> expected) {
+  ASSERT_EQ(expected, td::split(str));
+}
+
+TEST(Misc, split) {
+  test_split("", {"", ""});
+  test_split(" ", {"", ""});
+  test_split("abcdef", {"abcdef", ""});
+  test_split("abc def", {"abc", "def"});
+  test_split("a bcdef", {"a", "bcdef"});
+  test_split(" abcdef", {"", "abcdef"});
+  test_split("abcdef ", {"abcdef", ""});
+  test_split("ab cd ef", {"ab", "cd ef"});
+  test_split("ab cdef ", {"ab", "cdef "});
+  test_split(" abcd ef", {"", "abcd ef"});
+  test_split(" abcdef ", {"", "abcdef "});
+}
+
+static void test_full_split(Slice str, vector<Slice> expected) {
+  ASSERT_EQ(expected, td::full_split(str));
+}
+
+TEST(Misc, full_split) {
+  test_full_split("", {});
+  test_full_split(" ", {"", ""});
+  test_full_split("  ", {"", "", ""});
+  test_full_split("abcdef", {"abcdef"});
+  test_full_split("abc def", {"abc", "def"});
+  test_full_split("a bcdef", {"a", "bcdef"});
+  test_full_split(" abcdef", {"", "abcdef"});
+  test_full_split("abcdef ", {"abcdef", ""});
+  test_full_split("ab cd ef", {"ab", "cd", "ef"});
+  test_full_split("ab cdef ", {"ab", "cdef", ""});
+  test_full_split(" abcd ef", {"", "abcd", "ef"});
+  test_full_split(" abcdef ", {"", "abcdef", ""});
+  test_full_split(" ab cd ef ", {"", "ab", "cd", "ef", ""});
+  test_full_split("  ab  cd  ef  ", {"", "", "ab", "", "cd", "", "ef", "", ""});
+}
+
+TEST(Misc, StringBuilder) {
+  auto small_str = std::string{"abcdefghij"};
+  auto big_str = std::string(1000, 'a');
+  using V = std::vector<std::string>;
+  for (auto use_buf : {false, true}) {
+    for (size_t initial_buffer_size : {0, 1, 5, 10, 100, 1000, 2000}) {
+      for (auto test : {V{small_str}, V{small_str, big_str, big_str, small_str}, V{big_str, small_str, big_str}}) {
+        std::string buf(initial_buffer_size, '\0');
+        td::StringBuilder sb(buf, use_buf);
+        std::string res;
+        for (auto x : test) {
+          res += x;
+          sb << x;
+        }
+        if (use_buf) {
+          ASSERT_EQ(res, sb.as_cslice());
+        } else {
+          auto got = sb.as_cslice();
+          res.resize(got.size());
+          ASSERT_EQ(res, got);
+        }
+      }
+    }
+  }
 }
 
 TEST(Misc, As) {

@@ -8,7 +8,6 @@
 
 #include <cstdint>
 #include <limits>
-#include <tuple>
 #include <type_traits>
 #include <utility>
 
@@ -28,13 +27,20 @@ std::pair<T, T> split(T s, char delimiter = ' ') {
 
 template <class T>
 vector<T> full_split(T s, char delimiter = ' ') {
-  T next;
   vector<T> result;
-  while (!s.empty()) {
-    std::tie(next, s) = split(s, delimiter);
-    result.push_back(next);
+  if (s.empty()) {
+    return result;
   }
-  return result;
+  while (true) {
+    auto delimiter_pos = s.find(delimiter);
+    if (delimiter_pos == string::npos) {
+      result.push_back(std::move(s));
+      return result;
+    } else {
+      result.push_back(s.substr(0, delimiter_pos));
+      s = s.substr(delimiter_pos + 1);
+    }
+  }
 }
 
 string implode(vector<string> v, char delimiter = ' ');
@@ -185,6 +191,8 @@ T trim(T str) {
   return T(begin, end);
 }
 
+string lpad0(string str, size_t size);
+
 string oneline(Slice str);
 
 template <class T>
@@ -199,7 +207,7 @@ std::enable_if_t<std::is_signed<T>::value, T> to_integer(Slice str) {
     begin++;
   }
   while (begin != end && is_digit(*begin)) {
-    integer_value = static_cast<unsigned_T>(integer_value * 10 + (*begin++ - '0'));
+    integer_value = static_cast<unsigned_T>(integer_value * 10 + static_cast<unsigned_T>(*begin++ - '0'));
   }
   if (integer_value > static_cast<unsigned_T>(std::numeric_limits<T>::max())) {
     static_assert(~0 + 1 == 0, "Two's complement");
@@ -221,7 +229,7 @@ std::enable_if_t<std::is_unsigned<T>::value, T> to_integer(Slice str) {
   auto begin = str.begin();
   auto end = str.end();
   while (begin != end && is_digit(*begin)) {
-    integer_value = static_cast<T>(integer_value * 10 + (*begin++ - '0'));
+    integer_value = static_cast<T>(integer_value * 10 + static_cast<T>(*begin++ - '0'));
   }
   return integer_value;
 }
@@ -352,12 +360,12 @@ struct reversion_wrapper {
 
 template <typename T>
 auto begin(reversion_wrapper<T> w) {
-  return rbegin(w.iterable);
+  return w.iterable.rbegin();
 }
 
 template <typename T>
 auto end(reversion_wrapper<T> w) {
-  return rend(w.iterable);
+  return w.iterable.rend();
 }
 }  // namespace detail
 

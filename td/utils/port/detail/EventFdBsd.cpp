@@ -11,6 +11,7 @@ char disable_linker_warning_about_empty_file_event_fd_bsd_cpp TD_UNUSED;
 #include "td/utils/Slice.h"
 
 #include <fcntl.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 
@@ -80,6 +81,13 @@ void EventFdBsd::acquire() {
       LOG(FATAL) << "EventFdBsd read failed:" << result.error();
     }
   }
+}
+
+void EventFdBsd::wait(int timeout_ms) {
+  pollfd fd;
+  fd.fd = get_poll_info().native_fd().fd();
+  fd.events = POLLIN;
+  poll(&fd, 1, timeout_ms);
 }
 
 }  // namespace detail

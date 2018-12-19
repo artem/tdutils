@@ -11,30 +11,36 @@
 
 namespace td {
 
-bool FileLog::init(string path, int64 rotate_threshold) {
+Status FileLog::init(string path, int64 rotate_threshold) {
   if (path == path_) {
     set_rotate_threshold(rotate_threshold);
-    return true;
+    return Status::OK();
   }
 
-  auto r_fd = FileFd::open(path, FileFd::Create | FileFd::Write | FileFd::Append);
-  if (r_fd.is_error()) {
-    LOG(ERROR) << "Can't open log: " << r_fd.error();
-    return false;
-  }
+  TRY_RESULT(fd, FileFd::open(path, FileFd::Create | FileFd::Write | FileFd::Append));
 
   fd_.close();
-  fd_ = r_fd.move_as_ok();
-  fd_.get_native_fd().duplicate(Stderr().get_native_fd()).ignore();
+  fd_ = std::move(fd);
+  if (!Stderr().empty()) {
+    fd_.get_native_fd().duplicate(Stderr().get_native_fd()).ignore();
+  }
 
   path_ = std::move(path);
   size_ = fd_.get_size();
   rotate_threshold_ = rotate_threshold;
-  return true;
+  return Status::OK();
+}
+
+Slice FileLog::get_path() const {
+  return path_;
 }
 
 void FileLog::set_rotate_threshold(int64 rotate_threshold) {
   rotate_threshold_ = rotate_threshold;
+}
+
+int64 FileLog::get_rotate_threshold() const {
+  return rotate_threshold_;
 }
 
 void FileLog::append(CSlice cslice, int log_level) {
@@ -78,7 +84,9 @@ void FileLog::do_rotate() {
     process_fatal_error(r_fd.error().message());
   }
   fd_ = r_fd.move_as_ok();
-  fd_.get_native_fd().duplicate(Stderr().get_native_fd()).ignore();
+  if (!Stderr().empty()) {
+    fd_.get_native_fd().duplicate(Stderr().get_native_fd()).ignore();
+  }
   size_ = 0;
   SET_VERBOSITY_LEVEL(current_verbosity_level);
 }

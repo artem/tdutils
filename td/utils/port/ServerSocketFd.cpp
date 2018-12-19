@@ -158,10 +158,11 @@ class ServerSocketFdImpl : private Iocp::Callback {
   void on_iocp(Result<size_t> r_size, WSAOVERLAPPED *overlapped) override {
     // called from other thread
     if (dec_refcnt() || close_flag_) {
+      VLOG(fd) << "Ignore IOCP (server socket is closing)";
       return;
     }
     if (r_size.is_error()) {
-      return on_error(r_size.move_as_error());
+      return on_error(get_socket_pending_error(get_native_fd(), overlapped, r_size.move_as_error()));
     }
 
     if (overlapped == nullptr) {
@@ -223,7 +224,7 @@ class ServerSocketFdImpl {
       return Status::Error(-1, "Operation would block");
     }
 
-    auto error = Status::PosixError(accept_errno, PSLICE() << "Accept from [fd = " << native_fd << "] has failed");
+    auto error = Status::PosixError(accept_errno, PSLICE() << "Accept from " << get_native_fd() << " has failed");
     switch (accept_errno) {
       case EBADF:
       case EFAULT:
@@ -246,7 +247,7 @@ class ServerSocketFdImpl {
   }
 
   Status get_pending_error() {
-    if (get_poll_info().get_flags().has_pending_error()) {
+    if (!get_poll_info().get_flags().has_pending_error()) {
       return Status::OK();
     }
     TRY_STATUS(detail::get_socket_pending_error(get_native_fd()));
@@ -267,7 +268,7 @@ ServerSocketFd::ServerSocketFd() = default;
 ServerSocketFd::ServerSocketFd(ServerSocketFd &&) = default;
 ServerSocketFd &ServerSocketFd::operator=(ServerSocketFd &&) = default;
 ServerSocketFd::~ServerSocketFd() = default;
-ServerSocketFd::ServerSocketFd(std::unique_ptr<detail::ServerSocketFdImpl> impl) : impl_(impl.release()) {
+ServerSocketFd::ServerSocketFd(unique_ptr<detail::ServerSocketFdImpl> impl) : impl_(impl.release()) {
 }
 PollableFdInfo &ServerSocketFd::get_poll_info() {
   return impl_->get_poll_info();
@@ -334,9 +335,9 @@ Result<ServerSocketFd> ServerSocketFd::open(int32 port, CSlice addr) {
   }
 
 #if TD_PORT_POSIX
-  auto impl = std::make_unique<detail::ServerSocketFdImpl>(std::move(fd));
+  auto impl = make_unique<detail::ServerSocketFdImpl>(std::move(fd));
 #elif TD_PORT_WINDOWS
-  auto impl = std::make_unique<detail::ServerSocketFdImpl>(std::move(fd), address.get_address_family());
+  auto impl = make_unique<detail::ServerSocketFdImpl>(std::move(fd), address.get_address_family());
 #endif
 
   return ServerSocketFd(std::move(impl));

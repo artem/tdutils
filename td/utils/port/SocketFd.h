@@ -8,6 +8,8 @@
 #include "td/utils/Slice.h"
 #include "td/utils/Status.h"
 
+#include <memory>
+
 namespace td {
 
 namespace detail {
@@ -16,7 +18,6 @@ class SocketFdImplDeleter {
  public:
   void operator()(SocketFdImpl *impl);
 };
-class EventFdBsd;
 }  // namespace detail
 
 class SocketFd {
@@ -46,19 +47,15 @@ class SocketFd {
 
  private:
   std::unique_ptr<detail::SocketFdImpl, detail::SocketFdImplDeleter> impl_;
-
-  PollableFdInfo &poll_info();
-
-  friend class ServerSocketFd;
-  friend class detail::EventFdBsd;
-
-  explicit SocketFd(std::unique_ptr<detail::SocketFdImpl> impl);
+  explicit SocketFd(unique_ptr<detail::SocketFdImpl> impl);
 };
 
-#if TD_PORT_POSIX
 namespace detail {
+#if TD_PORT_POSIX
 Status get_socket_pending_error(const NativeFd &fd);
-}  // namespace detail
+#elif TD_PORT_WINDOWS
+Status get_socket_pending_error(const NativeFd &fd, WSAOVERLAPPED *overlapped, Status iocp_error);
 #endif
+}  // namespace detail
 
 }  // namespace td

@@ -30,6 +30,13 @@ string implode(vector<string> v, char delimiter) {
   return result;
 }
 
+string lpad0(string str, size_t size) {
+  if (str.size() >= size) {
+    return str;
+  }
+  return string(size - str.size(), '0') + str;
+}
+
 string oneline(Slice str) {
   string result;
   result.reserve(str.size());
@@ -57,7 +64,7 @@ string oneline(Slice str) {
 double to_double(Slice str) {
   static TD_THREAD_LOCAL std::stringstream *ss;
   if (init_thread_local<std::stringstream>(ss)) {
-    ss->imbue(std::locale::classic());
+    auto previous_locale = ss->imbue(std::locale::classic());
   } else {
     ss->str(std::string());
     ss->clear();

@@ -73,7 +73,7 @@ class TestsRunner : public TestContext {
   struct State {
     size_t it{0};
     bool is_running = false;
-    double start;
+    double start{0};
     size_t end{0};
   };
   bool stress_flag_{false};

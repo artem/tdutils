@@ -294,10 +294,11 @@ void AesCbcState::decrypt(Slice from, MutableSlice to) {
 class AesCtrState::Impl {
  public:
   Impl(const UInt256 &key, const UInt128 &iv) {
+    static_assert(AES_BLOCK_SIZE == 16, "");
     if (AES_set_encrypt_key(key.raw, 256, &aes_key) < 0) {
       LOG(FATAL) << "Failed to set encrypt key";
     }
-    MutableSlice(counter, AES_BLOCK_SIZE).copy_from({iv.raw, AES_BLOCK_SIZE});
+    MutableSlice(counter, AES_BLOCK_SIZE).copy_from(as_slice(iv));
     current_pos = 0;
   }
 
@@ -330,7 +331,7 @@ AesCtrState &AesCtrState::operator=(AesCtrState &&from) = default;
 AesCtrState::~AesCtrState() = default;
 
 void AesCtrState::init(const UInt256 &key, const UInt128 &iv) {
-  ctx_ = std::make_unique<AesCtrState::Impl>(key, iv);
+  ctx_ = make_unique<AesCtrState::Impl>(key, iv);
 }
 
 void AesCtrState::encrypt(Slice from, MutableSlice to) {
@@ -380,7 +381,7 @@ Sha256State &Sha256State::operator=(Sha256State &&from) = default;
 Sha256State::~Sha256State() = default;
 
 void sha256_init(Sha256State *state) {
-  state->impl = std::make_unique<Sha256StateImpl>();
+  state->impl = make_unique<Sha256StateImpl>();
   int err = SHA256_Init(&state->impl->ctx);
   LOG_IF(FATAL, err != 1);
 }

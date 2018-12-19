@@ -16,7 +16,6 @@
 namespace td {
 
 class OptionsParser {
- public:
   class Option {
    public:
     enum Type { NoArg, Arg, OptionalArg };
@@ -27,6 +26,7 @@ class OptionsParser {
     std::function<Status(Slice)> arg_callback;
   };
 
+ public:
   void set_description(std::string description) {
     description_ = std::move(description);
   }
@@ -51,9 +51,8 @@ class OptionsParser {
 #if TD_WINDOWS
     return -1;
 #else
-    // use getopt. long keys are not supported for now
     char buff[1024];
-    StringBuilder sb({buff, sizeof(buff)});
+    StringBuilder sb(MutableSlice{buff, sizeof(buff)});
     for (auto &opt : options_) {
       CHECK(opt.type != Option::OptionalArg);
       sb << opt.short_key;

@@ -1,8 +1,6 @@
 #include "td/utils/port/FileFd.h"
 
 #if TD_PORT_WINDOWS
-#include "td/utils/misc.h"  // for narrow_cast
-
 #include "td/utils/port/Stat.h"
 #include "td/utils/port/wstring_convert.h"
 #endif
@@ -12,9 +10,12 @@
 #include "td/utils/port/detail/PollableFd.h"
 #include "td/utils/port/PollFlags.h"
 #include "td/utils/port/sleep.h"
+#include "td/utils/ScopeGuard.h"
 #include "td/utils/StringBuilder.h"
 
 #include <cstring>
+#include <mutex>
+#include <unordered_set>
 
 #if TD_PORT_POSIX
 #include <fcntl.h>
@@ -85,7 +86,7 @@ FileFd::FileFd(FileFd &&) = default;
 FileFd &FileFd::operator=(FileFd &&) = default;
 FileFd::~FileFd() = default;
 
-FileFd::FileFd(std::unique_ptr<detail::FileFdImpl> impl) : impl_(std::move(impl)) {
+FileFd::FileFd(unique_ptr<detail::FileFdImpl> impl) : impl_(std::move(impl)) {
 }
 
 Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
@@ -188,7 +189,7 @@ Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
 }
 
 FileFd FileFd::from_native_fd(NativeFd native_fd) {
-  auto impl = std::make_unique<detail::FileFdImpl>();
+  auto impl = make_unique<detail::FileFdImpl>();
   impl->info.set_native_fd(std::move(native_fd));
   impl->info.add_flags(PollFlags::Write());
   return FileFd(std::move(impl));
@@ -206,7 +207,7 @@ Result<size_t> FileFd::write(Slice slice) {
   if (success) {
     return narrow_cast<size_t>(bytes_written);
   }
-  return OS_ERROR(PSLICE() << "Write to [fd = " << native_fd << "] has failed");
+  return OS_ERROR(PSLICE() << "Write to " << get_native_fd() << " has failed");
 }
 
 Result<size_t> FileFd::read(MutableSlice slice) {
@@ -214,7 +215,7 @@ Result<size_t> FileFd::read(MutableSlice slice) {
 #if TD_PORT_POSIX
   auto bytes_read = detail::skip_eintr([&] { return ::read(native_fd, slice.begin(), slice.size()); });
   bool success = bytes_read >= 0;
-  bool is_eof = narrow_cast<size_t>(bytes_read) < slice.size();
+  bool is_eof = success && narrow_cast<size_t>(bytes_read) < slice.size();
 #elif TD_PORT_WINDOWS
   DWORD bytes_read = 0;
   BOOL success = ReadFile(native_fd, slice.data(), narrow_cast<DWORD>(slice.size()), &bytes_read, nullptr);
@@ -226,7 +227,7 @@ Result<size_t> FileFd::read(MutableSlice slice) {
     }
     return static_cast<size_t>(bytes_read);
   }
-  return OS_ERROR(PSLICE() << "Read from [fd = " << native_fd << "] has failed");
+  return OS_ERROR(PSLICE() << "Read from " << get_native_fd() << " has failed");
 }
 
 Result<size_t> FileFd::pwrite(Slice slice, int64 offset) {
@@ -250,10 +251,10 @@ Result<size_t> FileFd::pwrite(Slice slice, int64 offset) {
   if (success) {
     return narrow_cast<size_t>(bytes_written);
   }
-  return OS_ERROR(PSLICE() << "Pwrite to [fd = " << native_fd << "] at [offset = " << offset << "] has failed");
+  return OS_ERROR(PSLICE() << "Pwrite to " << get_native_fd() << " at offset " << offset << " has failed");
 }
 
-Result<size_t> FileFd::pread(MutableSlice slice, int64 offset) {
+Result<size_t> FileFd::pread(MutableSlice slice, int64 offset) const {
   if (offset < 0) {
     return Status::Error("Offset must be non-negative");
   }
@@ -273,13 +274,56 @@ Result<size_t> FileFd::pread(MutableSlice slice, int64 offset) {
   if (success) {
     return narrow_cast<size_t>(bytes_read);
   }
-  return OS_ERROR(PSLICE() << "Pread from [fd = " << native_fd << "] at [offset = " << offset << "] has failed");
+  return OS_ERROR(PSLICE() << "Pread from " << get_native_fd() << " at offset " << offset << " has failed");
 }
 
-Status FileFd::lock(FileFd::LockFlags flags, int32 max_tries) {
+static std::mutex in_process_lock_mutex;
+static std::unordered_set<string> locked_files;
+
+static Status create_local_lock(const string &path, int32 &max_tries) {
+  while (true) {
+    {  // mutex lock scope
+      std::lock_guard<std::mutex> lock(in_process_lock_mutex);
+      if (locked_files.find(path) == locked_files.end()) {
+        VLOG(fd) << "Lock file \"" << path << '"';
+        locked_files.insert(path);
+        return Status::OK();
+      }
+    }
+
+    if (--max_tries <= 0) {
+      return Status::Error(
+          0, PSLICE() << "Can't lock file \"" << path << "\", because it is already in use by current program");
+    }
+
+    usleep_for(100000);
+  }
+}
+
+Status FileFd::lock(const LockFlags flags, const string &path, int32 max_tries) {
   if (max_tries <= 0) {
     return Status::Error(0, "Can't lock file: wrong max_tries");
   }
+
+  bool need_local_unlock = false;
+  if (!path.empty()) {
+    if (flags == LockFlags::Unlock) {
+      need_local_unlock = true;
+    } else if (flags == LockFlags::Read) {
+      LOG(FATAL) << "Local locking in Read mode is unsupported";
+    } else {
+      CHECK(flags == LockFlags::Write);
+      VLOG(fd) << "Trying to lock file \"" << path << '"';
+      TRY_STATUS(create_local_lock(path, max_tries));
+      need_local_unlock = true;
+    }
+  }
+  SCOPE_EXIT {
+    if (need_local_unlock) {
+      remove_local_lock(path);
+    }
+  };
+
 #if TD_PORT_POSIX
   auto native_fd = get_native_fd().fd();
 #elif TD_PORT_WINDOWS
@@ -331,12 +375,28 @@ Status FileFd::lock(FileFd::LockFlags flags, int32 max_tries) {
           continue;
         }
 
-        return OS_ERROR("Can't lock file because it is already in use; check for another program instance running");
+        return OS_ERROR(PSLICE() << "Can't lock file \"" << path
+                                 << "\", because it is already in use; check for another program instance running");
       }
 
       return OS_ERROR("Can't lock file");
     }
-    return Status::OK();
+
+    break;
+  }
+
+  if (flags == LockFlags::Write) {
+    need_local_unlock = false;
+  }
+  return Status::OK();
+}
+
+void FileFd::remove_local_lock(const string &path) {
+  if (!path.empty()) {
+    VLOG(fd) << "Unlock file \"" << path << '"';
+    std::unique_lock<std::mutex> lock(in_process_lock_mutex);
+    auto erased = locked_files.erase(path);
+    CHECK(erased > 0);
   }
 }
 

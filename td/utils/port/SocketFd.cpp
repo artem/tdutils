@@ -196,11 +196,11 @@ class SocketFdImpl : private Iocp::Callback {
   void on_iocp(Result<size_t> r_size, WSAOVERLAPPED *overlapped) override {
     // called from other thread
     if (dec_refcnt() || close_flag_) {
-      VLOG(fd) << "ignore iocp (file is closing)";
+      VLOG(fd) << "Ignore IOCP (socket is closing)";
       return;
     }
     if (r_size.is_error()) {
-      return on_error(r_size.move_as_error());
+      return on_error(get_socket_pending_error(get_native_fd(), overlapped, r_size.move_as_error()));
     }
 
     if (!is_connected_ && overlapped == &read_overlapped_) {
@@ -355,7 +355,7 @@ class SocketFdImpl {
       return 0;
     }
 
-    auto error = Status::PosixError(write_errno, PSLICE() << "Write to fd " << native_fd << " has failed");
+    auto error = Status::PosixError(write_errno, PSLICE() << "Write to " << get_native_fd() << " has failed");
     switch (write_errno) {
       case EBADF:
       case ENXIO:
@@ -403,7 +403,7 @@ class SocketFdImpl {
       get_poll_info().clear_flags(PollFlags::Read());
       return 0;
     }
-    auto error = Status::PosixError(read_errno, PSLICE() << "Read from fd " << native_fd << " has failed");
+    auto error = Status::PosixError(read_errno, PSLICE() << "Read from " << get_native_fd() << " has failed");
     switch (read_errno) {
       case EISDIR:
       case EBADF:
@@ -427,7 +427,7 @@ class SocketFdImpl {
     }
   }
   Status get_pending_error() {
-    if (get_poll_info().get_flags().has_pending_error()) {
+    if (!get_poll_info().get_flags().has_pending_error()) {
       return Status::OK();
     }
     TRY_STATUS(detail::get_socket_pending_error(get_native_fd()));
@@ -440,6 +440,9 @@ void SocketFdImplDeleter::operator()(SocketFdImpl *impl) {
   delete impl;
 }
 
+#endif
+
+#if TD_PORT_POSIX
 Status get_socket_pending_error(const NativeFd &fd) {
   int error = 0;
   socklen_t errlen = sizeof(error);
@@ -447,13 +450,25 @@ Status get_socket_pending_error(const NativeFd &fd) {
     if (error == 0) {
       return Status::OK();
     }
-    return Status::PosixError(error, PSLICE() << "Error on socket [fd_ = " << fd << "]");
+    return Status::PosixError(error, PSLICE() << "Error on " << fd);
   }
-  auto status = OS_SOCKET_ERROR(PSLICE() << "Can't load error on socket [fd_ = " << fd << "]");
+  auto status = OS_SOCKET_ERROR(PSLICE() << "Can't load error on socket " << fd);
   LOG(INFO) << "Can't load pending socket error: " << status;
   return status;
 }
-
+#elif TD_PORT_WINDOWS
+Status get_socket_pending_error(const NativeFd &fd, WSAOVERLAPPED *overlapped, Status iocp_error) {
+  // We need to call WSAGetOverlappedResult() just so WSAGetLastError() will return the correct error. See
+  // https://stackoverflow.com/questions/28925003/calling-wsagetlasterror-from-an-iocp-thread-return-incorrect-result
+  DWORD num_bytes = 0;
+  DWORD flags = 0;
+  bool success = WSAGetOverlappedResult(fd.socket(), overlapped, &num_bytes, false, &flags);
+  if (success) {
+    LOG(ERROR) << "WSAGetOverlappedResult succeded after " << iocp_error;
+    return iocp_error;
+  }
+  return OS_SOCKET_ERROR(PSLICE() << "Error on " << fd);
+}
 #endif
 
 Status init_socket_options(NativeFd &native_fd) {
@@ -480,16 +495,16 @@ SocketFd::SocketFd(SocketFd &&) = default;
 SocketFd &SocketFd::operator=(SocketFd &&) = default;
 SocketFd::~SocketFd() = default;
 
-SocketFd::SocketFd(std::unique_ptr<detail::SocketFdImpl> impl) : impl_(impl.release()) {
+SocketFd::SocketFd(unique_ptr<detail::SocketFdImpl> impl) : impl_(impl.release()) {
 }
 
 Result<SocketFd> SocketFd::from_native_fd(NativeFd fd) {
   TRY_STATUS(detail::init_socket_options(fd));
-  return SocketFd(std::make_unique<detail::SocketFdImpl>(std::move(fd)));
+  return SocketFd(make_unique<detail::SocketFdImpl>(std::move(fd)));
 }
 
 Result<SocketFd> SocketFd::open(const IPAddress &address) {
-  NativeFd native_fd{socket(address.get_address_family(), SOCK_STREAM, 0)};
+  NativeFd native_fd{socket(address.get_address_family(), SOCK_STREAM, IPPROTO_TCP)};
   if (!native_fd) {
     return OS_SOCKET_ERROR("Failed to create a socket");
   }
@@ -504,14 +519,14 @@ Result<SocketFd> SocketFd::open(const IPAddress &address) {
       return Status::PosixError(connect_errno, PSLICE() << "Failed to connect to " << address);
     }
   }
-  return SocketFd(std::make_unique<detail::SocketFdImpl>(std::move(native_fd)));
+  return SocketFd(make_unique<detail::SocketFdImpl>(std::move(native_fd)));
 #elif TD_PORT_WINDOWS
   auto bind_addr = address.get_any_addr();
   auto e_bind = bind(native_fd.socket(), bind_addr.get_sockaddr(), narrow_cast<int>(bind_addr.get_sockaddr_len()));
   if (e_bind != 0) {
     return OS_SOCKET_ERROR("Failed to bind a socket");
   }
-  return SocketFd(std::make_unique<detail::SocketFdImpl>(std::move(native_fd), address));
+  return SocketFd(make_unique<detail::SocketFdImpl>(std::move(native_fd), address));
 #endif
 }
 

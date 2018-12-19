@@ -4,6 +4,7 @@
 #include "td/utils/misc.h"
 #include "td/utils/port/detail/NativeFd.h"
 #include "td/utils/port/PollFlags.h"
+#include "td/utils/port/thread.h"
 #include "td/utils/Slice.h"
 
 #include <atomic>
@@ -120,7 +121,7 @@ class BufferedStdinImpl {
     if (res) {
       return static_cast<size_t>(bytes_read);
     }
-    return OS_ERROR(PSLICE() << "Read from [fd = " << native_fd << "] has failed");
+    return OS_ERROR(PSLICE() << "Read from " << info_.native_fd() << " has failed");
   }
 };
 void BufferedStdinImplDeleter::operator()(BufferedStdinImpl *impl) {
@@ -181,7 +182,7 @@ void BufferedStdinImplDeleter::operator()(BufferedStdinImpl *impl) {
 }  // namespace detail
 #endif
 
-BufferedStdin::BufferedStdin() : impl_(std::make_unique<detail::BufferedStdinImpl>().release()) {
+BufferedStdin::BufferedStdin() : impl_(make_unique<detail::BufferedStdinImpl>().release()) {
 }
 BufferedStdin::BufferedStdin(BufferedStdin &&) = default;
 BufferedStdin &BufferedStdin::operator=(BufferedStdin &&) = default;

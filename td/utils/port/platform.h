@@ -14,7 +14,7 @@
 #elif defined(__APPLE__)
   #include "TargetConditionals.h"
   #if TARGET_OS_IPHONE
-    // iOS/Apple Watch OS/Apple TV OS
+    // iOS/watchOS/tvOS
     #if TARGET_OS_IOS
       #define TD_DARWIN_IOS 1
     #elif TARGET_OS_TV
@@ -25,7 +25,7 @@
       #warning "Probably unsupported Apple iPhone platform. Feel free to try to compile"
     #endif
   #elif TARGET_OS_MAC
-    // Other kinds of Mac OS
+    // Other kinds of macOS
     #define TD_DARWIN_MAC 1
   #else
     #warning "Probably unsupported Apple platform. Feel free to try to compile"
@@ -37,6 +37,8 @@
   #define TD_TIZEN 1
 #elif defined(__linux__)
   #define TD_LINUX 1
+#elif defined(__FreeBSD__)
+  #define TD_FREEBSD 1
 #elif defined(__CYGWIN__)
   #define TD_CYGWIN 1
 #elif defined(__EMSCRIPTEN__)

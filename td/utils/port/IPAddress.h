@@ -9,6 +9,7 @@
 
 #if !TD_WINDOWS
 #include <arpa/inet.h>
+#include <netinet/in.h>
 #include <sys/socket.h>
 #endif
 
@@ -25,6 +26,8 @@ class IPAddress {
   bool is_valid() const;
   bool is_ipv4() const;
   bool is_ipv6() const;
+
+  bool is_reserved() const;
 
   int get_port() const;
   void set_port(int port);

@@ -20,7 +20,7 @@ inline MutableSlice::MutableSlice(unsigned char *s, size_t len) : s_(reinterpret
   CHECK(s_ != nullptr);
 }
 
-inline MutableSlice::MutableSlice(string &s) : MutableSlice(&s[0], s.size()) {
+inline MutableSlice::MutableSlice(string &s) : s_(&s[0]), len_(s.size()) {
 }
 
 template <class T>

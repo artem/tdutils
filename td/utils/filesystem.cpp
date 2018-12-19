@@ -95,8 +95,11 @@ static std::string clean_filename_part(Slice name, int max_length) {
   int size = 0;
   for (auto *it = name.ubegin(); it != name.uend() && size < max_length;) {
     uint32 code;
-    it = next_utf8_unsafe(it, &code);
+    it = next_utf8_unsafe(it, &code, "clean_filename_part");
     if (!is_ok(code)) {
+      if (prepare_search_character(code) == 0) {
+        continue;
+      }
       code = ' ';
     }
     if (new_name.empty() && (code == ' ' || code == '.')) {

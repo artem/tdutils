@@ -2,6 +2,7 @@
 
 #include "td/utils/JsonBuilder.h"
 #include "td/utils/logging.h"
+#include "td/utils/Slice.h"
 #include "td/utils/StringBuilder.h"
 
 #include <tuple>
@@ -28,7 +29,7 @@ static void decode_encode(string str, string result = "") {
 
 TEST(JSON, array) {
   char tmp[1000];
-  StringBuilder sb({tmp, sizeof(tmp)});
+  StringBuilder sb(MutableSlice{tmp, sizeof(tmp)});
   JsonBuilder jb(std::move(sb));
   jb.enter_value().enter_array() << "Hello" << -123;
   ASSERT_EQ(jb.string_builder().is_error(), false);
@@ -38,7 +39,7 @@ TEST(JSON, array) {
 }
 TEST(JSON, object) {
   char tmp[1000];
-  StringBuilder sb({tmp, sizeof(tmp)});
+  StringBuilder sb(MutableSlice{tmp, sizeof(tmp)});
   JsonBuilder jb(std::move(sb));
   auto c = jb.enter_object();
   c << std::tie("key", "value");
@@ -52,7 +53,7 @@ TEST(JSON, object) {
 
 TEST(JSON, nested) {
   char tmp[1000];
-  StringBuilder sb({tmp, sizeof(tmp)});
+  StringBuilder sb(MutableSlice{tmp, sizeof(tmp)});
   JsonBuilder jb(std::move(sb));
   {
     auto a = jb.enter_array();

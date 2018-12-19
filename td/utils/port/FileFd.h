@@ -32,10 +32,11 @@ class FileFd {
   Result<size_t> read(MutableSlice slice) TD_WARN_UNUSED_RESULT;
 
   Result<size_t> pwrite(Slice slice, int64 offset) TD_WARN_UNUSED_RESULT;
-  Result<size_t> pread(MutableSlice slice, int64 offset) TD_WARN_UNUSED_RESULT;
+  Result<size_t> pread(MutableSlice slice, int64 offset) const TD_WARN_UNUSED_RESULT;
 
   enum class LockFlags { Write, Read, Unlock };
-  Status lock(LockFlags flags, int32 max_tries = 1) TD_WARN_UNUSED_RESULT;
+  Status lock(const LockFlags flags, const string &path, int32 max_tries) TD_WARN_UNUSED_RESULT;
+  static void remove_local_lock(const string &path);
 
   PollableFdInfo &get_poll_info();
   const PollableFdInfo &get_poll_info() const;
@@ -56,9 +57,9 @@ class FileFd {
   NativeFd move_as_native_fd();
 
  private:
-  std::unique_ptr<detail::FileFdImpl> impl_;
+  unique_ptr<detail::FileFdImpl> impl_;
 
-  explicit FileFd(std::unique_ptr<detail::FileFdImpl> impl);
+  explicit FileFd(unique_ptr<detail::FileFdImpl> impl);
 };
 
 }  // namespace td

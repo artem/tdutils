@@ -233,11 +233,11 @@ class UdpSocketFdImpl : private Iocp::Callback {
   void on_iocp(Result<size_t> r_size, WSAOVERLAPPED *overlapped) override {
     // called from other thread
     if (dec_refcnt() || close_flag_) {
-      VLOG(fd) << "ignore iocp (file is closing)";
+      VLOG(fd) << "Ignore IOCP (UDP socket is closing)";
       return;
     }
     if (r_size.is_error()) {
-      return on_error(r_size.move_as_error());
+      return on_error(get_socket_pending_error(get_native_fd(), overlapped, r_size.move_as_error()));
     }
 
     if (!is_connected_ && overlapped == &receive_overlapped_) {
@@ -467,7 +467,7 @@ class UdpSocketFdImpl {
     return info_.native_fd();
   }
   Status get_pending_error() {
-    if (get_poll_info().get_flags().has_pending_error()) {
+    if (!get_poll_info().get_flags().has_pending_error()) {
       return Status::OK();
     }
     TRY_STATUS(detail::get_socket_pending_error(get_native_fd()));
@@ -688,7 +688,7 @@ class UdpSocketFdImpl {
 #ifdef MSG_ERRQUEUE
       flags = MSG_ERRQUEUE;
 #else
-      return fd_.get_pending_error();
+      return get_pending_error();
 #endif
     }
     //struct mmsghdr {
@@ -761,10 +761,10 @@ Result<UdpSocketFd> UdpSocketFd::open(const IPAddress &address) {
   if (e_bind != 0) {
     return OS_SOCKET_ERROR("Failed to bind a socket");
   }
-  return UdpSocketFd(std::make_unique<detail::UdpSocketFdImpl>(std::move(native_fd)));
+  return UdpSocketFd(make_unique<detail::UdpSocketFdImpl>(std::move(native_fd)));
 }
 
-UdpSocketFd::UdpSocketFd(std::unique_ptr<detail::UdpSocketFdImpl> impl) : impl_(impl.release()) {
+UdpSocketFd::UdpSocketFd(unique_ptr<detail::UdpSocketFdImpl> impl) : impl_(impl.release()) {
 }
 
 void UdpSocketFd::close() {
