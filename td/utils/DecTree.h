@@ -105,7 +105,7 @@ class DecTree {
     }
   }
 
-  static const ValueType *get_node(const std::unique_ptr<Node> &Tree, const KeyType &key) {
+  static const ValueType *get_node(const unique_ptr<Node> &Tree, const KeyType &key) {
     if (Tree == nullptr) {
       return nullptr;
     }
@@ -118,7 +118,7 @@ class DecTree {
     }
   }
 
-  static const ValueType *get_node_by_idx(const std::unique_ptr<Node> &Tree, size_t idx) {
+  static const ValueType *get_node_by_idx(const unique_ptr<Node> &Tree, size_t idx) {
     CHECK(Tree != nullptr);
     auto s = (Tree->left_ != nullptr) ? Tree->left_->size_ : 0;
     if (idx < s) {
