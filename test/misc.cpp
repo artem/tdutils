@@ -586,6 +586,10 @@ TEST(Misc, As) {
   as<int>(buf) = 123;
   ASSERT_EQ(123, as<int>((const char *)buf));
   ASSERT_EQ(123, as<int>((char *)buf));
+  char buf2[100];
+  as<int>(buf2) = as<int>(buf);
+  ASSERT_EQ(123, as<int>((const char *)buf2));
+  ASSERT_EQ(123, as<int>((char *)buf2));
 }
 
 TEST(Misc, Regression) {

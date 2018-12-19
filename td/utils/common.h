@@ -106,6 +106,11 @@ class As {
  public:
   As(void *ptr) : ptr_(ptr) {
   }
+  As(As &&) = default;
+  const As<T> &operator=(const As &new_value) const {
+    memcpy(ptr_, new_value.ptr_, sizeof(T));
+    return *this;
+  }
   const As<T> &operator=(const T new_value) const {
     memcpy(ptr_, &new_value, sizeof(T));
     return *this;
