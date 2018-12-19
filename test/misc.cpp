@@ -1,4 +1,5 @@
 #include "td/utils/base64.h"
+#include "td/utils/bits.h"
 #include "td/utils/BigNum.h"
 #include "td/utils/HttpUrl.h"
 #include "td/utils/invoke.h"
@@ -443,4 +444,72 @@ TEST(Misc, IPAddress_get_ipv4) {
   test_get_ipv4(0x01020304);
   test_get_ipv4(0x04030201);
   test_get_ipv4(0xFFFFFFFF);
+}
+
+TEST(Misc, As) {
+  char buf[100];
+  as<int>(buf) = 123;
+  ASSERT_EQ(123, as<int>((const char *)buf));
+  ASSERT_EQ(123, as<int>((char *)buf));
+}
+
+TEST(Misc, Regression) {
+  string name = "regression_db";
+  RegressionTester::destroy(name);
+
+  {
+    auto tester = RegressionTester::create(name);
+    tester->save_db();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("two_plus_one", "three").ensure();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("two_plus_one", "three").ensure();
+    tester->save_db();
+  }
+  {
+    auto tester = RegressionTester::create(name);
+    tester->save_db();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("two_plus_one", "three").ensure();
+    tester->verify_test("one_plus_one", "two").ensure();
+    tester->verify_test("two_plus_one", "three").ensure();
+    tester->save_db();
+    tester->verify_test("one_plus_one", "three").ensure_error();
+    tester->verify_test("two_plus_one", "two").ensure_error();
+  }
+  {
+    auto tester = RegressionTester::create(name);
+    tester->verify_test("one_plus_one", "three").ensure_error();
+    tester->verify_test("two_plus_one", "two").ensure_error();
+  }
+}
+
+TEST(Misc, Bits) {
+  ASSERT_EQ(32, count_leading_zeroes32(0));
+  ASSERT_EQ(64, count_leading_zeroes64(0));
+  ASSERT_EQ(32, count_trailing_zeroes32(0));
+  ASSERT_EQ(64, count_trailing_zeroes64(0));
+
+  for (int i = 0; i < 32; i++) {
+    ASSERT_EQ(31 - i, count_leading_zeroes32(1u << i));
+    ASSERT_EQ(i, count_trailing_zeroes32(1u << i));
+    ASSERT_EQ(31 - i, count_leading_zeroes_non_zero32(1u << i));
+    ASSERT_EQ(i, count_trailing_zeroes_non_zero32(1u << i));
+  }
+  for (int i = 0; i < 64; i++) {
+    ASSERT_EQ(63 - i, count_leading_zeroes64(1ull << i));
+    ASSERT_EQ(i, count_trailing_zeroes64(1ull << i));
+    ASSERT_EQ(63 - i, count_leading_zeroes_non_zero64(1ull << i));
+    ASSERT_EQ(i, count_trailing_zeroes_non_zero64(1ull << i));
+  }
+
+  ASSERT_EQ(0x12345678u, bswap32(0x78563412u));
+  ASSERT_EQ(0x12345678abcdef67ull, bswap64(0x67efcdab78563412ull));
+
+  ASSERT_EQ(0, count_bits32(0));
+  ASSERT_EQ(0, count_bits64(0));
+  ASSERT_EQ(4, count_bits32((1u << 31) | 7));
+  ASSERT_EQ(4, count_bits64((1ull << 63) | 7));
 }

@@ -20,15 +20,11 @@ inline MutableSlice::MutableSlice(unsigned char *s, size_t len) : s_(reinterpret
   CHECK(s_ != nullptr);
 }
 
-inline MutableSlice::MutableSlice(string &s) : MutableSlice() {
-  if (!s.empty()) {
-    s_ = &s[0];
-    len_ = s.size();
-  }
+inline MutableSlice::MutableSlice(string &s) : MutableSlice(&s[0], s.size()) {
 }
 
 template <class T>
-inline MutableSlice::MutableSlice(T s, std::enable_if_t<std::is_same<char *, T>::value, private_tag>) : s_(s) {
+MutableSlice::MutableSlice(T s, std::enable_if_t<std::is_same<char *, T>::value, private_tag>) : s_(s) {
   CHECK(s_ != nullptr);
   len_ = std::strlen(s_);
 }
@@ -153,14 +149,13 @@ inline Slice::Slice(const string &s) : s_(s.c_str()), len_(s.size()) {
 }
 
 template <class T>
-inline Slice::Slice(T s, std::enable_if_t<std::is_same<char *, std::remove_const_t<T>>::value, private_tag>) : s_(s) {
+Slice::Slice(T s, std::enable_if_t<std::is_same<char *, std::remove_const_t<T>>::value, private_tag>) : s_(s) {
   CHECK(s_ != nullptr);
   len_ = std::strlen(s_);
 }
 
 template <class T>
-inline Slice::Slice(T s, std::enable_if_t<std::is_same<const char *, std::remove_const_t<T>>::value, private_tag>)
-    : s_(s) {
+Slice::Slice(T s, std::enable_if_t<std::is_same<const char *, std::remove_const_t<T>>::value, private_tag>) : s_(s) {
   CHECK(s_ != nullptr);
   len_ = std::strlen(s_);
 }
@@ -300,13 +295,28 @@ inline std::size_t SliceHash::operator()(Slice slice) const {
   return result;
 }
 
+inline Slice as_slice(Slice slice) {
+  return slice;
+}
+inline MutableSlice as_slice(MutableSlice slice) {
+  return slice;
+}
+
 template <size_t N>
-td::Slice as_slice(const td::UInt<N> &value) {
-  return td::Slice(value.raw, N / 8);
+Slice UInt<N>::as_slice() const {
+  return Slice(raw, N / 8);
 }
 template <size_t N>
-td::MutableSlice as_slice(td::UInt<N> &value) {
-  return td::MutableSlice(value.raw, N / 8);
+MutableSlice UInt<N>::as_slice() {
+  return MutableSlice(raw, N / 8);
+}
+template <size_t N>
+Slice as_slice(const UInt<N> &value) {
+  return value.as_slice();
+}
+template <size_t N>
+MutableSlice as_slice(UInt<N> &value) {
+  return value.as_slice();
 }
 
 }  // namespace td
