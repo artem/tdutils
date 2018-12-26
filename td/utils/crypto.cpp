@@ -381,7 +381,9 @@ Sha256State &Sha256State::operator=(Sha256State &&from) = default;
 Sha256State::~Sha256State() = default;
 
 void sha256_init(Sha256State *state) {
-  state->impl = make_unique<Sha256StateImpl>();
+  if (!state->impl) {
+    state->impl = make_unique<Sha256StateImpl>();
+  }
   int err = SHA256_Init(&state->impl->ctx);
   LOG_IF(FATAL, err != 1);
 }
@@ -392,15 +394,12 @@ void sha256_update(Slice data, Sha256State *state) {
   LOG_IF(FATAL, err != 1);
 }
 
-void sha256_final(Sha256State *state, MutableSlice output, bool reuse) {
+void sha256_final(Sha256State *state, MutableSlice output, bool destroy) {
   CHECK(output.size() >= 32);
   CHECK(state->impl);
   int err = SHA256_Final(output.ubegin(), &state->impl->ctx);
   LOG_IF(FATAL, err != 1);
-  if (reuse) {
-    int err = SHA256_Init(&state->impl->ctx);
-    LOG_IF(FATAL, err != 1);
-  } else {
+  if (destroy) {
     state->impl.reset();
   }
 }

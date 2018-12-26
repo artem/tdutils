@@ -64,17 +64,27 @@ string sha512(Slice data) TD_WARN_UNUSED_RESULT;
 
 struct Sha256StateImpl;
 
+struct Sha256State;
+void sha256_init(Sha256State *state);
+void sha256_update(Slice data, Sha256State *state);
+void sha256_final(Sha256State *state, MutableSlice output, bool destroy = true);
+
 struct Sha256State {
   Sha256State();
   Sha256State(Sha256State &&from);
   Sha256State &operator=(Sha256State &&from);
   ~Sha256State();
+  void init() {
+    sha256_init(this);
+  }
+  void feed(Slice data) {
+    sha256_update(data, this);
+  }
+  void extract(MutableSlice dest) {
+    sha256_final(this, dest, false);
+  }
   unique_ptr<Sha256StateImpl> impl;
 };
-
-void sha256_init(Sha256State *state);
-void sha256_update(Slice data, Sha256State *state);
-void sha256_final(Sha256State *state, MutableSlice output, bool reuse = false);
 
 void md5(Slice input, MutableSlice output);
 
