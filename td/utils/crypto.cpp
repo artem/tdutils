@@ -392,12 +392,17 @@ void sha256_update(Slice data, Sha256State *state) {
   LOG_IF(FATAL, err != 1);
 }
 
-void sha256_final(Sha256State *state, MutableSlice output) {
+void sha256_final(Sha256State *state, MutableSlice output, bool reuse) {
   CHECK(output.size() >= 32);
   CHECK(state->impl);
   int err = SHA256_Final(output.ubegin(), &state->impl->ctx);
   LOG_IF(FATAL, err != 1);
-  state->impl.reset();
+  if (reuse) {
+    int err = SHA256_Init(&state->impl->ctx);
+    LOG_IF(FATAL, err != 1);
+  } else {
+    state->impl.reset();
+  }
 }
 
 void md5(Slice input, MutableSlice output) {

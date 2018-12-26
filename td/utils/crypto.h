@@ -74,7 +74,7 @@ struct Sha256State {
 
 void sha256_init(Sha256State *state);
 void sha256_update(Slice data, Sha256State *state);
-void sha256_final(Sha256State *state, MutableSlice output);
+void sha256_final(Sha256State *state, MutableSlice output, bool reuse = false);
 
 void md5(Slice input, MutableSlice output);
 
