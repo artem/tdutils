@@ -94,4 +94,13 @@ using Span = detail::SpanImpl<T, const T>;
 template <class T>
 using MutableSpan = detail::SpanImpl<T, T>;
 
+template <class T>
+auto span(const T *ptr, size_t size) {
+  return Span<T>(ptr, size);
+}
+template <class T>
+auto mutable_span(T *ptr, size_t size) {
+  return MutableSpan<T>(ptr, size);
+}
+
 }  // namespace td
