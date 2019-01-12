@@ -206,6 +206,7 @@ set(TDUTILS_SOURCE
   td/utils/tl_parsers.h
   td/utils/tl_storers.h
   td/utils/translit.h
+  td/utils/ThreadSafeCounter.h
   td/utils/type_traits.h
   td/utils/unicode.h
   td/utils/unique_ptr.h
