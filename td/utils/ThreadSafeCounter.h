@@ -11,7 +11,7 @@ class ThreadSafeCounter {
  public:
   void add(int64 diff) {
     auto &node = thread_local_node();
-    node.count_.store(node.count_.load(std::memory_order_relaxed) + 1, std::memory_order_relaxed);
+    node.count_.store(node.count_.load(std::memory_order_relaxed) + diff, std::memory_order_relaxed);
   }
 
   int64 sum() const {
