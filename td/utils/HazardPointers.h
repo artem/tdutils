@@ -85,14 +85,14 @@ class HazardPointers {
  private:
   struct ThreadData {
     std::array<std::atomic<T *>, MaxPointersN> hazard;
-    char pad[TD_CONCURRENCY_PAD - sizeof(std::array<std::atomic<T *>, MaxPointersN>)];
+    char pad[TD_CONCURRENCY_PAD - sizeof(hazard)];
 
     // stupid gc
     std::vector<unique_ptr<T>> to_delete;
-    char pad2[TD_CONCURRENCY_PAD - sizeof(std::vector<unique_ptr<T>>)];
+    char pad2[TD_CONCURRENCY_PAD - sizeof(to_delete)];
   };
   std::vector<ThreadData> threads_;
-  char pad2[TD_CONCURRENCY_PAD - sizeof(std::vector<ThreadData>)];
+  char pad[TD_CONCURRENCY_PAD - sizeof(threads_)];
 
   static T *do_protect(std::atomic<T *> &hazard_ptr, std::atomic<T *> &to_protect) {
     T *saved = nullptr;
