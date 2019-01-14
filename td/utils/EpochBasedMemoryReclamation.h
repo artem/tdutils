@@ -24,6 +24,7 @@ class EpochBasedMemoryReclamation {
 
     ~Locker() {
       if (ebmr_) {
+        retire_sync();
         unlock();
         ebmr_.release();
       }
