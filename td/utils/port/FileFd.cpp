@@ -429,7 +429,7 @@ static uint64 filetime_to_unix_time_nsec(LONGLONG filetime) {
 }
 #endif
 
-Stat FileFd::stat() {
+Stat FileFd::stat() const {
   CHECK(!empty());
 #if TD_PORT_POSIX
   return detail::fstat(get_native_fd().fd());

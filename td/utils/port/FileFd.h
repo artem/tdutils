@@ -45,7 +45,7 @@ class FileFd {
 
   int64 get_size();
 
-  Stat stat();
+  Stat stat() const;
 
   Status sync() TD_WARN_UNUSED_RESULT;
 

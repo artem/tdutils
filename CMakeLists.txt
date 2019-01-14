@@ -39,6 +39,7 @@ set(TDUTILS_SOURCE
   td/utils/port/Clocks.cpp
   td/utils/port/FileFd.cpp
   td/utils/port/IPAddress.cpp
+  td/utils/port/MemoryMapping.cpp
   td/utils/port/path.cpp
   td/utils/port/PollFlags.cpp
   td/utils/port/ServerSocketFd.cpp
@@ -100,6 +101,7 @@ set(TDUTILS_SOURCE
   td/utils/port/EventFdBase.h
   td/utils/port/FileFd.h
   td/utils/port/IPAddress.h
+  td/utils/port/MemoryMapping.h
   td/utils/port/path.h
   td/utils/port/platform.h
   td/utils/port/Poll.h
