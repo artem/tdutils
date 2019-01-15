@@ -48,6 +48,11 @@ class optional {
     return value();
   }
 
+  template <class... ArgsT>
+  void emplace(ArgsT &&... args) {
+    impl_.emplace(std::forward<ArgsT>(args)...);
+  }
+
  private:
   Result<T> impl_;
 };

@@ -225,7 +225,7 @@ class MpmcQueueOld {
   using PopStatus = typename MpmcQueueBlock<T>::PopStatus;
 
   void push(T value, size_t thread_id) {
-    auto hazard_ptr_holder = hazard_pointers_.get_holder(thread_id, 0);
+    typename decltype(hazard_pointers_)::Holder hazard_ptr_holder(hazard_pointers_, thread_id, 0);
     while (true) {
       auto node = hazard_ptr_holder.protect(write_pos_);
       auto status = node->block.push(value);
@@ -257,7 +257,7 @@ class MpmcQueueOld {
   }
 
   bool try_pop(T &value, size_t thread_id) {
-    auto hazard_ptr_holder = hazard_pointers_.get_holder(thread_id, 0);
+    typename decltype(hazard_pointers_)::Holder hazard_ptr_holder(hazard_pointers_, thread_id, 0);
     while (true) {
       auto node = hazard_ptr_holder.protect(read_pos_);
       auto status = node->block.try_pop(value);

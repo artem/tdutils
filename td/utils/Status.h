@@ -324,6 +324,10 @@ class Result {
   template <class S, std::enable_if_t<!std::is_same<std::decay_t<S>, Result>::value, int> = 0>
   Result(S &&x) : status_(), value_(std::forward<S>(x)) {
   }
+  struct emplace_t {};
+  template <class... ArgsT>
+  Result(emplace_t, ArgsT &&... args) : status_(), value_(std::forward<ArgsT>(args)...) {
+  }
   Result(Status &&status) : status_(std::move(status)) {
     CHECK(status_.is_error());
   }
@@ -354,6 +358,14 @@ class Result {
     status_ = std::move(other.status_);
     other.status_ = Status::Error<-3>();
     return *this;
+  }
+  template <class... ArgsT>
+  void emplace(ArgsT &&... args) {
+    if (status_.is_ok()) {
+      value_.~T();
+    }
+    new (&value_) T(std::forward<ArgsT>(args)...);
+    status_ = Status::OK();
   }
   ~Result() {
     if (status_.is_ok()) {
