@@ -92,7 +92,7 @@ class HazardPointers {
     char pad2[TD_CONCURRENCY_PAD - sizeof(to_delete)];
   };
   std::vector<ThreadData> threads_;
-  char pad[TD_CONCURRENCY_PAD - sizeof(threads_)];
+  char pad2[TD_CONCURRENCY_PAD - sizeof(threads_)];
 
   static T *do_protect(std::atomic<T *> &hazard_ptr, std::atomic<T *> &to_protect) {
     T *saved = nullptr;
