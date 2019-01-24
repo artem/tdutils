@@ -59,12 +59,12 @@ struct MpmcStat {
   }
 };
 }  // namespace detail
-//detail::MpmcStat stat_;
+extern detail::MpmcStat stat_;
 
 template <class T>
 class OneValue {
  public:
-  bool set_value(T &value) {
+  inline bool set_value(T &value) {
     value_ = std::move(value);
     int state = Empty;
     if (state_.compare_exchange_strong(state, Value, std::memory_order_acq_rel)) {
@@ -73,7 +73,7 @@ class OneValue {
     value = std::move(value_);
     return false;
   }
-  bool get_value(T &value) {
+  inline bool get_value(T &value) {
     auto old_state = state_.exchange(Taken, std::memory_order_acq_rel);
     if (old_state == Value) {
       value = std::move(value_);
@@ -143,6 +143,11 @@ class MpmcQueueBlock {
   //returns Ok, Empty or Closed
   PopStatus try_pop(T &value) {
     while (true) {
+      // this check slows 1:1 case but prevents writer starvation in 1:N case
+      if (write_pos_.load(std::memory_order_relaxed) <= read_pos_.load(std::memory_order_relaxed) &&
+          read_pos_.load(std::memory_order_relaxed) < nodes_.size()) {
+        return PopStatus::Empty;
+      }
       auto read_pos = read_pos_.fetch_add(1, std::memory_order_relaxed);
       if (read_pos >= nodes_.size()) {
         return PopStatus::Closed;
@@ -211,7 +216,7 @@ class MpmcQueueOld {
       delete to_delete;
     }
     //stat_.dump();
-    //stat_ = MpmcStat();
+    //stat_ = detail::MpmcStat();
   }
 
   size_t hazard_pointers_to_delele_size_unsafe() const {
