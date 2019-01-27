@@ -82,6 +82,7 @@ set(TDUTILS_SOURCE
   td/utils/logging.cpp
   td/utils/misc.cpp
   td/utils/MimeType.cpp
+  td/utils/MpmcQueue.cpp
   td/utils/Random.cpp
   td/utils/StackAllocator.cpp
   td/utils/Status.cpp
