@@ -69,6 +69,9 @@ class SpanImpl {
   size_t size() const {
     return size_;
   }
+  bool empty() const {
+    return size() == 0;
+  }
 
   SpanImpl &truncate(size_t size) {
     CHECK(size <= size_);
