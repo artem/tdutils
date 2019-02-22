@@ -130,13 +130,13 @@ class ConcurrentHashMap {
       bool ok = false;
       ValueT inserted_value;
       hash_map->with_value(key, true, [&](auto &node_value) {
-        ValueT expected_value = empty_value();
+        ValueT expected_value = this->empty_value();
         if (node_value.compare_exchange_strong(expected_value, value, std::memory_order_release,
                                                std::memory_order_acquire)) {
           ok = true;
           inserted_value = value;
         } else {
-          if (expected_value == migrate_value()) {
+          if (expected_value == this->migrate_value()) {
             ok = false;
           } else {
             ok = true;
