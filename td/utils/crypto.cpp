@@ -637,6 +637,59 @@ uint32 crc32(Slice data) {
 uint32 crc32c(Slice data) {
   return crc32c::Crc32c(data.data(), data.size());
 }
+uint32 crc32c_extend(uint32 old_crc, Slice data) {
+  return crc32c::Extend(old_crc, data.ubegin(), data.size());
+}
+namespace {
+unsigned gf32_matrix_times(uint32 *matrix, uint32 vector) {
+  unsigned sum = 0;
+  while (vector) {
+    if (vector & 1) {
+      sum ^= *matrix;
+    }
+    vector >>= 1;
+    matrix++;
+  }
+  return sum;
+}
+
+void gf32_matrix_square(uint32 *square, uint32 *matrix) {
+  int n = 0;
+  do {
+    square[n] = gf32_matrix_times(matrix, matrix[n]);
+  } while (++n < 32);
+}
+
+}  // namespace
+static uint32 power_buf_raw[1024];
+uint32 crc32c_extend(uint32 old_crc, uint32 data_crc, size_t data_size) {
+  static uint32 *power_buf = [&] {
+    auto *buf = power_buf_raw;
+    buf[0] = 0x82F63B78UL;
+    for (int n = 0; n < 31; n++) {
+      buf[n + 1] = 1U << n;
+    }
+    for (int n = 1; n < 32; n++) {
+      gf32_matrix_square(buf + (n << 5), buf + ((n - 1) << 5));
+    }
+    return buf;
+  }();
+  /* degenerate case (also disallow negative lengths) */
+  if (data_size == 0) {
+    return old_crc;
+  }
+
+  unsigned int *p = power_buf + 64;
+  do {
+    p += 32;
+    if (data_size % 2 != 0) {
+      old_crc = gf32_matrix_times(p, old_crc);
+    }
+    data_size >>= 1;
+  } while (data_size != 0);
+  return old_crc ^ data_crc;
+}
+
 #endif
 
 static const uint64 crc64_table[256] = {

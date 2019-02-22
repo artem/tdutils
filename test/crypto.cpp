@@ -157,6 +157,17 @@ TEST(Crypto, crc32c) {
 
   for (std::size_t i = 0; i < strings.size(); i++) {
     ASSERT_EQ(answers[i], td::crc32c(strings[i]));
+
+    auto v = td::rand_split(strings[i]);
+    td::uint32 a = 0;
+    td::uint32 b = 0;
+    for (auto &x : v) {
+      a = td::crc32c_extend(a, x);
+      auto x_crc = td::crc32c(x);
+      b = td::crc32c_extend(b, x_crc, x.size());
+    }
+    ASSERT_EQ(answers[i], a);
+    ASSERT_EQ(answers[i], b);
   }
 }
 #endif

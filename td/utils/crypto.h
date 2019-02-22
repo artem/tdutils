@@ -106,6 +106,8 @@ uint32 crc32(Slice data);
 
 #if TD_HAVE_CRC32C
 uint32 crc32c(Slice data);
+uint32 crc32c_extend(uint32 old_crc, Slice data);
+uint32 crc32c_extend(uint32 old_crc, uint32 new_crc, size_t data_size);
 #endif
 
 uint64 crc64(Slice data);
