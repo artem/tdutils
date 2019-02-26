@@ -9,6 +9,7 @@
 #include "td/utils/Random.h"
 #include "td/utils/optional.h"
 #include "td/utils/Slice.h"
+#include "td/utils/Span.h"
 #include "td/utils/Status.h"
 #include "td/utils/Time.h"
 
@@ -115,7 +116,7 @@ inline string rand_string(char from, char to, int len) {
   return res;
 }
 
-inline std::vector<string> rand_split(string str) {
+inline std::vector<string> rand_split(Slice str) {
   std::vector<string> res;
   size_t pos = 0;
   while (pos < str.size()) {
@@ -125,7 +126,7 @@ inline std::vector<string> rand_split(string str) {
     } else {
       len = Random::fast(100, 200);
     }
-    res.push_back(str.substr(pos, len));
+    res.push_back(str.substr(pos, len).str());
     pos += len;
   }
   return res;
