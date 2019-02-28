@@ -35,8 +35,8 @@ struct PrintFlags {
 
 StringBuilder &operator<<(StringBuilder &sb, const PrintFlags &print_flags) {
   auto flags = print_flags.flags;
-  if (flags &
-      ~(FileFd::Write | FileFd::Read | FileFd::Truncate | FileFd::Create | FileFd::Append | FileFd::CreateNew)) {
+  if (flags & ~(FileFd::Write | FileFd::Read | FileFd::Truncate | FileFd::Create | FileFd::Append | FileFd::CreateNew |
+                FileFd::Direct)) {
     return sb << "opened with invalid flags " << flags;
   }
 
@@ -69,6 +69,9 @@ StringBuilder &operator<<(StringBuilder &sb, const PrintFlags &print_flags) {
   if (flags & FileFd::Truncate) {
     sb << " with truncation";
   }
+  if (flags & FileFd::Direct) {
+    sb << " for direct io";
+  }
   return sb;
 }
 
@@ -90,7 +93,7 @@ FileFd::FileFd(unique_ptr<detail::FileFdImpl> impl) : impl_(std::move(impl)) {
 }
 
 Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
-  if (flags & ~(Write | Read | Truncate | Create | Append | CreateNew)) {
+  if (flags & ~(Write | Read | Truncate | Create | Append | CreateNew | Direct)) {
     return Status::Error(PSLICE() << "File \"" << filepath << "\" has failed to be " << PrintFlags{flags});
   }
 
@@ -125,6 +128,10 @@ Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
     native_flags |= O_APPEND;
   }
 
+  if (flags & Direct) {
+    LOG(ERROR) << "DIRECT";
+    native_flags |= O_DIRECT;
+  }
   int native_fd = detail::skip_eintr([&] { return ::open(filepath.c_str(), native_flags, static_cast<mode_t>(mode)); });
   if (native_fd < 0) {
     return OS_ERROR(PSLICE() << "File \"" << filepath << "\" can't be " << PrintFlags{flags});
@@ -167,10 +174,18 @@ Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
     }
   }
 
+  DWORD native_flags = 0;
+  if (flags & Direct) {
+    flags |= FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING;
+  }
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_SYSTEM)
-  auto handle = CreateFile(w_filepath.c_str(), desired_access, share_mode, nullptr, creation_disposition, 0, nullptr);
+  auto handle =
+      CreateFile(w_filepath.c_str(), desired_access, share_mode, nullptr, creation_disposition, native_flags, nullptr);
 #else
-  auto handle = CreateFile2(w_filepath.c_str(), desired_access, share_mode, creation_disposition, nullptr);
+  CREATEFILE2_EXTENDED_PARAMETERS extended_parameters;
+  memset(&extended_parameters, 0, sizeof(extended_parameters));
+  extended_parameters.dwFileFlags = native_flags;
+  auto handle = CreateFile2(w_filepath.c_str(), desired_access, share_mode, creation_disposition, &extended_parameters);
 #endif
   if (handle == INVALID_HANDLE_VALUE) {
     return OS_ERROR(PSLICE() << "File \"" << filepath << "\" can't be " << PrintFlags{flags});
@@ -208,6 +223,26 @@ Result<size_t> FileFd::write(Slice slice) {
     return narrow_cast<size_t>(bytes_written);
   }
   return OS_ERROR(PSLICE() << "Write to " << get_native_fd() << " has failed");
+}
+
+Result<size_t> FileFd::writev(Span<IoVector::Value> slices) {
+#if TD_PORT_POSIX
+  auto native_fd = get_native_fd().fd();
+  TRY_RESULT(slices_size, narrow_cast_safe<int>(slices.size()));
+  auto bytes_written = detail::skip_eintr([&] { return ::writev(native_fd, slices.begin(), slices_size); });
+  bool success = bytes_written >= 0;
+  if (success) {
+    return narrow_cast<size_t>(bytes_written);
+  }
+  return OS_ERROR(PSLICE() << "Writev to " << get_native_fd() << " has failed");
+#else
+  size_t res = 0;
+  for (auto slice : slices) {
+    TRY_RESULT(size, write(slice));
+    res += size;
+  }
+  return res;
+#endif
 }
 
 Result<size_t> FileFd::read(MutableSlice slice) {
