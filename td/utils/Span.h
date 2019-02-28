@@ -46,6 +46,18 @@ class SpanImpl {
     SpanImpl copy{other};
     *this = copy;
   }
+  template <class OtherInnerT>
+  bool operator==(const SpanImpl<T, OtherInnerT> &other) const {
+    if (size() != other.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < size(); i++) {
+      if ((*this)[i] != other[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   InnerT &operator[](size_t i) {
     DCHECK(i < size());
