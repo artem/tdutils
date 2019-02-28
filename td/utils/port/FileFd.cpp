@@ -225,7 +225,7 @@ Result<size_t> FileFd::write(Slice slice) {
   return OS_ERROR(PSLICE() << "Write to " << get_native_fd() << " has failed");
 }
 
-Result<size_t> FileFd::writev(Span<IoVector::Value> slices) {
+Result<size_t> FileFd::writev(Span<IoSlice> slices) {
 #if TD_PORT_POSIX
   auto native_fd = get_native_fd().fd();
   TRY_RESULT(slices_size, narrow_cast_safe<int>(slices.size()));

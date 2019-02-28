@@ -60,19 +60,19 @@ TEST(Port, files) {
 }
 
 TEST(Port, Writev) {
-  IoVector vec;
+  std::vector<IoSlice> vec;
   CSlice test_file_path = "test.txt";
   unlink(test_file_path).ignore();
   auto fd = FileFd::open(test_file_path, FileFd::Write | FileFd::CreateNew).move_as_ok();
-  vec.push_back("a");
-  vec.push_back("b");
-  vec.push_back("cd");
-  ASSERT_EQ(4u, fd.writev(vec.as_span()).move_as_ok());
+  vec.push_back(as_io_slice("a"));
+  vec.push_back(as_io_slice("b"));
+  vec.push_back(as_io_slice("cd"));
+  ASSERT_EQ(4u, fd.writev(vec).move_as_ok());
   vec.clear();
-  vec.push_back("efg");
-  vec.push_back("");
-  vec.push_back("hi");
-  ASSERT_EQ(5u, fd.writev(vec.as_span()).move_as_ok());
+  vec.push_back(as_io_slice("efg"));
+  vec.push_back(as_io_slice(""));
+  vec.push_back(as_io_slice("hi"));
+  ASSERT_EQ(5u, fd.writev(vec).move_as_ok());
   fd.close();
   fd = FileFd::open(test_file_path, FileFd::Read).move_as_ok();
   Slice expected_content = "abcdefghi";

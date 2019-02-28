@@ -102,6 +102,7 @@ set(TDUTILS_SOURCE
   td/utils/port/EventFdBase.h
   td/utils/port/FileFd.h
   td/utils/port/IPAddress.h
+  td/utils/port/IoSlice.h
   td/utils/port/MemoryMapping.h
   td/utils/port/path.h
   td/utils/port/platform.h
