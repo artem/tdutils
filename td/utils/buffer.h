@@ -667,9 +667,9 @@ class ChainBufferWriter {
     writer_.confirm_append(size);
   }
 
-  void append(Slice slice) {
+  void append(Slice slice, size_t hint = 0) {
     while (!slice.empty()) {
-      auto ready = prepare_append(slice.size());
+      auto ready = prepare_append(td::max(slice.size(), hint));
       auto shift = min(ready.size(), slice.size());
       std::memcpy(ready.data(), slice.data(), shift);
       confirm_append(shift);
