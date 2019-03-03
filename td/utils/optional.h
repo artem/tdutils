@@ -47,6 +47,12 @@ class optional {
   T &operator*() {
     return value();
   }
+  T unwrap() {
+    CHECK(*this);
+    auto res = std::move(value());
+    impl_ = {};
+    return res;
+  }
 
   template <class... ArgsT>
   void emplace(ArgsT &&... args) {
