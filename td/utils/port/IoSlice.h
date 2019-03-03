@@ -1,3 +1,4 @@
+#pragma once
 #include "td/utils/Slice.h"
 #include "td/utils/Span.h"
 
