@@ -646,6 +646,14 @@ class ChainBufferWriter {
     }
     return res;
   }
+  MutableSlice prepare_append_at_least(size_t size) {
+    CHECK(!empty());
+    auto res = prepare_append_inplace();
+    if (res.size() < size) {
+      return prepare_append_alloc(size);
+    }
+    return res;
+  }
   MutableSlice prepare_append_inplace() {
     CHECK(!empty());
     return writer_.prepare_append();
