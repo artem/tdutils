@@ -1,12 +1,13 @@
 #include "td/utils/port/MemoryMapping.h"
 
+#include "td/utils/misc.h"
+
 // TODO:
 // windows,
 // anonymous map
 // huge pages?
 #if TD_WINDOWS
 #else
-
 #include <sys/mman.h>
 #include <unistd.h>
 #endif
@@ -18,7 +19,7 @@ class MemoryMappingImpl {
   MemoryMappingImpl(MutableSlice data, int64 offset) : data_(data), offset_(offset) {
   }
   Slice as_slice() const {
-    return data_.substr(offset_);
+    return data_.substr(narrow_cast<size_t>(offset_));
   }
   MutableSlice as_mutable_slice() const {
     return {};
@@ -30,6 +31,9 @@ class MemoryMappingImpl {
 };
 
 Result<int64> get_page_size() {
+#if TD_WINDOWS
+  return Status::Error("Unimplemented");
+#else
   static Result<int64> page_size = []() -> Result<int64> {
     auto page_size = sysconf(_SC_PAGESIZE);
     if (page_size < 0) {
@@ -38,6 +42,7 @@ Result<int64> get_page_size() {
     return page_size;
   }();
   return page_size.clone();
+#endif
 }
 }  // namespace detail
 
@@ -45,6 +50,9 @@ Result<MemoryMapping> MemoryMapping::create_anonymous(const MemoryMapping::Optio
   return Status::Error("Unsupported yet");
 }
 Result<MemoryMapping> MemoryMapping::create_from_file(const FileFd &file_fd, const MemoryMapping::Options &options) {
+#if TD_WINDOWS
+  return Status::Error("Unsupported yet");
+#else
   if (file_fd.empty()) {
     return Status::Error("Can't create memory mapping: file is empty");
   }
@@ -75,6 +83,7 @@ Result<MemoryMapping> MemoryMapping::create_from_file(const FileFd &file_fd, con
 
   return MemoryMapping(std::make_unique<detail::MemoryMappingImpl>(
       MutableSlice(reinterpret_cast<char *>(data), data_size), data_offset));
+#endif
 }
 
 MemoryMapping::MemoryMapping(MemoryMapping &&other) = default;

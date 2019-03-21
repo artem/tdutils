@@ -1,6 +1,9 @@
 #pragma once
+
 #include "td/utils/common.h"
 #include "td/utils/port/FileFd.h"
+#include "td/utils/Slice.h"
+#include "td/utils/Status.h"
 
 namespace td {
 namespace detail {
@@ -13,14 +16,12 @@ class MemoryMapping {
     int64 offset{0};
     int64 size{-1};
 
-    Options() {
-    }
-    Options &with_offset(int64 offset) {
-      this->offset = offset;
+    Options &with_offset(int64 new_offset) {
+      offset = new_offset;
       return *this;
     }
-    Options &with_size(int64 size) {
-      this->size = size;
+    Options &with_size(int64 new_size) {
+      size = new_size;
       return *this;
     }
   };
@@ -31,11 +32,11 @@ class MemoryMapping {
   Slice as_slice() const;
   MutableSlice as_mutable_slice();  // returns empty slice if memory is read-only
 
+  MemoryMapping(const MemoryMapping &other) = delete;
+  const MemoryMapping &operator=(const MemoryMapping &other) = delete;
   MemoryMapping(MemoryMapping &&other);
   MemoryMapping &operator=(MemoryMapping &&other);
   ~MemoryMapping();
-  MemoryMapping(const MemoryMapping &other) = delete;
-  const MemoryMapping &operator=(const MemoryMapping &other) = delete;
 
  private:
   std::unique_ptr<detail::MemoryMappingImpl> impl_;

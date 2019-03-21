@@ -1,4 +1,5 @@
 #pragma once
+
 #include "td/utils/Slice.h"
 #include "td/utils/Span.h"
 
@@ -20,7 +21,7 @@ inline Slice as_slice(const IoSlice io_slice) {
 }
 #else
 using IoSlice = Slice;
-inline IoS as_io_slice(Slice slice) {
+inline IoSlice as_io_slice(Slice slice) {
   return slice;
 }
 #endif
