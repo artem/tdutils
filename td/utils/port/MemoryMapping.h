@@ -16,6 +16,8 @@ class MemoryMapping {
     int64 offset{0};
     int64 size{-1};
 
+    Options() {
+    }
     Options &with_offset(int64 new_offset) {
       offset = new_offset;
       return *this;
