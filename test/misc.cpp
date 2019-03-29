@@ -652,3 +652,34 @@ TEST(Misc, Bits) {
   ASSERT_EQ(4, count_bits32((1u << 31) | 7));
   ASSERT_EQ(4, count_bits64((1ull << 63) | 7));
 }
+
+TEST(Misc, Time) {
+  Stage run;
+  Stage check;
+  Stage finish;
+
+  size_t threads_n = 3;
+  std::vector<thread> threads;
+  std::vector<std::atomic<double>> ts(threads_n);
+  for (size_t i = 0; i < threads_n; i++) {
+    threads.emplace_back([&, thread_id = i] {
+      for (uint64 round = 1; round < 100000; round++) {
+        ts[thread_id] = 0;
+        run.wait(round * threads_n);
+        ts[thread_id] = Time::now();
+        check.wait(round * threads_n);
+        for (auto &ts : ts) {
+          auto other_ts = ts.load();
+          if (other_ts != 0) {
+            ASSERT_TRUE(other_ts <= Time::now_cached());
+          }
+        }
+
+        finish.wait(round * threads_n);
+      }
+    });
+  }
+  for (auto &thread : threads) {
+    thread.join();
+  }
+}

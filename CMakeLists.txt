@@ -20,6 +20,10 @@ if (CRC32C_FOUND)
   set(TD_HAVE_CRC32C 1)
 endif()
 
+if (ABSL_FOUND)
+  set(TD_HAVE_ABSL 1)
+endif()
+
 configure_file(td/utils/config.h.in td/utils/config.h @ONLY)
 
 add_subdirectory(generate)
@@ -272,6 +276,9 @@ endif()
 
 if (CRC32C_FOUND)
   target_link_libraries(tdutils PRIVATE crc32c)
+endif()
+if (ABSL_FOUND)
+  target_link_libraries(tdutils PRIVATE absl::base absl::time)
 endif()
 
 install(TARGETS tdutils EXPORT TdTargets
