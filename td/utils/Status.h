@@ -21,13 +21,29 @@
       return try_status.move_as_error(); \
     }                                    \
   }
+#define TRY_STATUS_PREFIX(status, prefix)             \
+  {                                                   \
+    auto try_status = (status);                       \
+    if (try_status.is_error()) {                      \
+      return try_status.move_as_error_prefix(prefix); \
+    }                                                 \
+  }
 #define TRY_RESULT(name, result) TRY_RESULT_IMPL(TD_CONCAT(TD_CONCAT(r_, name), __LINE__), name, result)
+#define TRY_RESULT_PREFIX(name, result, prefix) \
+  TRY_RESULT_PREFIX_IMPL(TD_CONCAT(TD_CONCAT(r_, name), __LINE__), name, result, prefix)
 
 #define TRY_RESULT_IMPL(r_name, name, result) \
   auto r_name = (result);                     \
   if (r_name.is_error()) {                    \
     return r_name.move_as_error();            \
   }                                           \
+  auto name = r_name.move_as_ok();
+
+#define TRY_RESULT_PREFIX_IMPL(r_name, name, result, prefix) \
+  auto r_name = (result);                                    \
+  if (r_name.is_error()) {                                   \
+    return r_name.move_as_error_prefix(prefix);              \
+  }                                                          \
   auto name = r_name.move_as_ok();
 
 #define LOG_STATUS(status)                      \
@@ -242,6 +258,10 @@ class Status {
     return std::move(*this);
   }
 
+  Status move_as_error_prefix(std::string prefix) TD_WARN_UNUSED_RESULT {
+    return td::Status::Error(code(), prefix + message().c_str());
+  }
+
  private:
   struct Info {
     bool static_flag : 1;
@@ -407,6 +427,13 @@ class Result {
       status_ = Status::Error<-4>();
     };
     return std::move(status_);
+  }
+  Status move_as_error_prefix(std::string prefix) TD_WARN_UNUSED_RESULT {
+    CHECK(status_.is_error());
+    SCOPE_EXIT {
+      status_ = Status::Error<-4>();
+    };
+    return status_.move_as_error_prefix(prefix);
   }
   const T &ok() const {
     CHECK(status_.is_ok()) << status_;
