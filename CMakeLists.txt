@@ -1,5 +1,13 @@
 cmake_minimum_required(VERSION 3.0.2 FATAL_ERROR)
 
+if (WIN32)
+  if (WINGETOPT_FOUND)
+    set(TD_HAVE_GETOPT 1)
+  endif()
+else()
+  set(TD_HAVE_GETOPT 1)
+endif()
+
 if (NOT ZLIB_FOUND)
   find_package(ZLIB)
 endif()
@@ -87,6 +95,7 @@ set(TDUTILS_SOURCE
   td/utils/misc.cpp
   td/utils/MimeType.cpp
   td/utils/MpmcQueue.cpp
+  td/utils/OptionsParser.cpp
   td/utils/Random.cpp
   td/utils/StackAllocator.cpp
   td/utils/Status.cpp
@@ -279,6 +288,10 @@ if (CRC32C_FOUND)
 endif()
 if (ABSL_FOUND)
   target_link_libraries(tdutils PRIVATE absl::base absl::time)
+endif()
+
+if (WIN32 AND WINGETOPT_FOUND)
+  target_link_libraries(tdutils PRIVATE wingetot)
 endif()
 
 install(TARGETS tdutils EXPORT TdTargets
