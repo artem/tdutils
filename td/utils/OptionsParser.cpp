@@ -1,7 +1,7 @@
 #include "td/utils/OptionsParser.h"
 
 #if TD_HAVE_GETOPT
-#include <getopt.h>
+#include "getopt.h"
 #endif
 
 namespace td {

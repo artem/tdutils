@@ -291,7 +291,7 @@ if (ABSL_FOUND)
 endif()
 
 if (WIN32 AND WINGETOPT_FOUND)
-  target_link_libraries(tdutils PRIVATE wingetot)
+  target_link_libraries(tdutils PRIVATE wingetopt)
 endif()
 
 install(TARGETS tdutils EXPORT TdTargets
