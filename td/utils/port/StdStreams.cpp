@@ -3,6 +3,7 @@
 #include "td/utils/logging.h"
 #include "td/utils/misc.h"
 #include "td/utils/port/detail/NativeFd.h"
+#include "td/utils/port/detail/Iocp.h"
 #include "td/utils/port/PollFlags.h"
 #include "td/utils/port/thread.h"
 #include "td/utils/Slice.h"
@@ -53,10 +54,11 @@ FileFd &Stderr() {
 
 #if TD_PORT_WINDOWS
 namespace detail {
-class BufferedStdinImpl {
+class BufferedStdinImpl : public Iocp::Callback {
  public:
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_SYSTEM)
   BufferedStdinImpl() : info_(NativeFd(GetStdHandle(STD_INPUT_HANDLE), true)) {
+    iocp_ref_ = Iocp::get()->get_ref();
     read_thread_ = td::thread([this] { this->read_loop(); });
   }
 #else
@@ -99,6 +101,8 @@ class BufferedStdinImpl {
   ChainBufferReader reader_ = writer_.extract_reader();
   td::thread read_thread_;
   std::atomic<bool> close_flag_{false};
+  IocpRef iocp_ref_;
+  std::atomic<int> refcnt_{1};
 
   void read_loop() {
     while (!close_flag_) {
@@ -109,9 +113,31 @@ class BufferedStdinImpl {
         break;
       }
       writer_.confirm_append(r_size.ok());
-      info_.add_flags_from_poll(td::PollFlags::Read());
+      if (iocp_ref_.post(0, this, nullptr)) {
+        inc_refcnt();
+      }
     }
-    //TODO delete
+    LOG(ERROR) << "Close";
+    if (!iocp_ref_.post(0, this, nullptr)) {
+      dec_refcnt();
+    }
+  }
+  void on_iocp(Result<size_t> r_size, WSAOVERLAPPED *overlapped) override {
+    info_.add_flags_from_poll(td::PollFlags::Read());
+    dec_refcnt();
+  }
+
+  bool dec_refcnt() {
+    if (--refcnt_ == 0) {
+      delete this;
+      LOG(ERROR) << "Delete this";
+      return true;
+    }
+    return false;
+  }
+  void inc_refcnt() {
+    CHECK(refcnt_ != 0);
+    refcnt_++;
   }
 
   Result<size_t> read(MutableSlice slice) {
@@ -125,6 +151,7 @@ class BufferedStdinImpl {
   }
 };
 void BufferedStdinImplDeleter::operator()(BufferedStdinImpl *impl) {
+//  LOG(ERROR) << "Close";
   impl->close();
 }
 }  // namespace detail
