@@ -162,12 +162,14 @@ set(TDUTILS_SOURCE
   td/utils/ChangesProcessor.h
   td/utils/Closure.h
   td/utils/common.h
+  td/utils/ConcurrentHashTable.h
   td/utils/Container.h
   td/utils/Context.h
   td/utils/crypto.h
   td/utils/DecTree.h
   td/utils/Destructor.h
   td/utils/Enumerator.h
+  td/utils/EpochBasedMemoryReclamation.h
   td/utils/FileLog.h
   td/utils/filesystem.h
   td/utils/find_boundary.h
