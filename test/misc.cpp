@@ -668,8 +668,8 @@ TEST(Misc, Time) {
         run.wait(round * threads_n);
         ts[thread_id] = Time::now();
         check.wait(round * threads_n);
-        for (auto &ts : ts) {
-          auto other_ts = ts.load();
+        for (auto &ts_ref : ts) {
+          auto other_ts = ts_ref.load();
           if (other_ts != 0) {
             ASSERT_TRUE(other_ts <= Time::now_cached());
           }

@@ -131,4 +131,16 @@ inline int32 count_bits64(uint64 x) {
 }
 #endif
 
+inline uint32 bits_negate32(uint32 x) {
+  return ~x + 1;
+}
+inline uint64 bits_negate64(uint64 x) {
+  return ~x + 1;
+}
+inline uint32 lower_bit32(uint32 x) {
+  return x & bits_negate32(x);
+}
+inline uint64 lower_bit64(uint64 x) {
+  return x & bits_negate64(x);
+}
 }  // namespace td

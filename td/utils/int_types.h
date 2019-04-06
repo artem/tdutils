@@ -79,7 +79,7 @@ bool operator!=(const UInt<size> &a, const UInt<size> &b) {
 template <size_t size>
 td::UInt<size> operator^(const UInt<size> &a, const UInt<size> &b) {
   td::UInt<size> res;
-  for (size_t i = 0; i * 8 < size; i++) {
+  for (size_t i = 0; i < size / 8; i++) {
     res.raw[i] = static_cast<uint8>(a.raw[i] ^ b.raw[i]);
   }
   return res;
