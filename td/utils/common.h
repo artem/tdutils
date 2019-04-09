@@ -42,7 +42,7 @@
 #include <string>
 #include <vector>
 
-//#define TD_DEBUG
+#define TD_DEBUG
 
 #define TD_DEFINE_STR_IMPL(x) #x
 #define TD_DEFINE_STR(x) TD_DEFINE_STR_IMPL(x)
