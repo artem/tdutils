@@ -213,6 +213,14 @@ TEST(Crypto, crc64) {
   }
 }
 
+TEST(Crypto, crc16) {
+  td::vector<td::uint16> answers{0, 9842, 25046, 37023};
+
+  for (std::size_t i = 0; i < strings.size(); i++) {
+    ASSERT_EQ(answers[i], td::crc16(strings[i]));
+  }
+}
+
 static td::Slice rsa_private_key = R"ABCD(
 -----BEGIN PRIVATE KEY-----
 MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDeYT5/prmLEa2Q
