@@ -69,6 +69,9 @@ class Timestamp {
   double at() const {
     return at_;
   }
+  double at_unix() {
+    return at_ + td::Clocks::system() - Time::now();
+  }
 
   double in() const {
     return at_ - Time::now_cached();
