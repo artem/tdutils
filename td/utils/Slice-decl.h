@@ -3,6 +3,7 @@
 #include "td/utils/common.h"
 
 #include <type_traits>
+#include <limits>
 
 namespace td {
 
