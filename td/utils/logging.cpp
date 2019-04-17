@@ -220,7 +220,11 @@ class DefaultLog : public LogInterface {
         color = TC_CYAN;
         break;
     }
-    TsCerr() << color << slice << TC_EMPTY;
+    if (!slice.empty() && slice.back() == '\n') {
+      TsCerr() << color << slice.substr(0, slice.size() - 1) << TC_EMPTY << "\n";
+    } else {
+      TsCerr() << color << slice << TC_EMPTY;
+    }
 #else
     // TODO: color
     TsCerr() << slice;
