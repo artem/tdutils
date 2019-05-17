@@ -296,6 +296,10 @@ if (WIN32 AND WINGETOPT_FOUND)
   target_link_libraries(tdutils PRIVATE wingetopt)
 endif()
 
+if (ANDROID)
+  target_link_libraries(tdutils PRIVATE log)
+endif()
+
 install(TARGETS tdutils EXPORT TdTargets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
