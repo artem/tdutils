@@ -180,15 +180,23 @@ TEST(Crypto, crc32c_benchmark) {
       return PSTRING() << "Crc32c with chunk_size=" << chunk_size_;
     }
     void start_up_n(int n) override {
+      if (n > (1 << 20)) {
+        cnt_ = n / (1 << 20);
+        n = (1 << 20);
+      } else {
+        cnt_ = 1;
+      }
       data_ = std::string(n, 'a');
     }
     void run(int n) override {
       td::uint32 res = 0;
-      td::Slice data(data_);
-      while (!data.empty()) {
-        auto head = data.substr(0, chunk_size_);
-        data = data.substr(head.size());
-        res = td::crc32c_extend(res, head);
+      for (int i = 0; i < cnt_; i++) {
+        td::Slice data(data_);
+        while (!data.empty()) {
+          auto head = data.substr(0, chunk_size_);
+          data = data.substr(head.size());
+          res = td::crc32c_extend(res, head);
+        }
       }
       td::do_not_optimize_away(res);
     }
@@ -196,6 +204,7 @@ TEST(Crypto, crc32c_benchmark) {
    private:
     size_t chunk_size_;
     std::string data_;
+    int cnt_;
   };
   bench(Crc32cExtendBenchmark(2));
   bench(Crc32cExtendBenchmark(8));
