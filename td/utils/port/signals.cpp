@@ -2,6 +2,7 @@
 
 #include "td/utils/port/config.h"
 #include "td/utils/port/stacktrace.h"
+#include "td/utils/port/StdStreams.h"
 
 #include "td/utils/format.h"
 #include "td/utils/logging.h"
@@ -291,6 +292,11 @@ void signal_safe_write_pointer(void *p, bool add_header) {
   signal_safe_write(Slice(ptr, end), add_header);
 }
 
+static void unblock_stdin() {
+#if TD_PORT_POSIX
+  td::Stdin().get_native_fd().set_is_blocking(true).ignore();
+#endif
+}
 void default_failure_signal_hanler(int sig) {
   td::signal_safe_write_signal_number(sig, true);
 
@@ -298,11 +304,12 @@ void default_failure_signal_hanler(int sig) {
   options.use_gdb = true;
   td::Stacktrace::print_to_stderr(options);
 
-  //unblock_stdin();
-  exit(EXIT_FAILURE);
+  unblock_stdin();
+  _Exit(EXIT_FAILURE);
 }
 
 Status set_default_failure_signal_handler() {
+  atexit(unblock_stdin);
   TRY_STATUS(setup_signals_alt_stack());
   TRY_STATUS(set_signal_handler(td::SignalType::Abort, default_failure_signal_hanler));
   TRY_STATUS(td::set_signal_handler(td::SignalType::Error, default_failure_signal_hanler));
