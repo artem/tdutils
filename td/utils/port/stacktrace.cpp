@@ -43,6 +43,10 @@ void print_backtrace_gdb(void) {
       td::signal_safe_write("Can't set dumpable\n");
       return;
     }
+    int fds[2];
+    if (pipe(fds) < 0) {
+      td::signal_safe_write("Can't create a pipe\n");
+    }
 #endif
 
     int child_pid = fork();
@@ -51,11 +55,24 @@ void print_backtrace_gdb(void) {
       return;
     }
     if (!child_pid) {
+#if TD_LINUX && defined(PR_SET_PTRACER)
+      char c;
+      read(fds[0], &c, 1);
+#endif
       dup2(2, 1);  // redirect output to stderr
       execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "thread apply all bt full", name_buf, pid_buf_begin,
              NULL);
       return;
     } else {
+#if TD_LINUX && defined(PR_SET_PTRACER)
+      if (prctl(PR_SET_PTRACER, child_pid, 0, 0, 0) < 0) {
+        td::signal_safe_write("Can't set ptracer\n");
+        return;
+      }
+      if (write(fds[1], "a", 1) != 1) {
+        td::signal_safe_write("Can't write to pipe\n");
+      }
+#endif
       waitpid(child_pid, nullptr, 0);
     }
   } else {
@@ -66,7 +83,7 @@ void print_backtrace_gdb(void) {
 }  // namespace
 
 void Stacktrace::print_to_stderr(const PrintOptions &options) {
-  //print_backtrace();
+  print_backtrace();
   if (options.use_gdb) {
     print_backtrace_gdb();
   }
