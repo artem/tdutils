@@ -1,7 +1,7 @@
 #include "td/utils/port/stacktrace.h"
 #include "td/utils/port/signals.h"
 
-#if !TD_WINDOWS
+#if !TD_WINDOWS && !TD_ANDROID && !TD_FREEBSD
 #include <execinfo.h>
 #include <sys/wait.h>
 #include <unistd.h>
