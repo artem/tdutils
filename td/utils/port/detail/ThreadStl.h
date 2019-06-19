@@ -40,6 +40,8 @@ class ThreadStl {
   void detach() {
     thread_.detach();
   }
+  void set_name(CSlice name) {
+  }
 
   static unsigned hardware_concurrency() {
     return std::thread::hardware_concurrency();

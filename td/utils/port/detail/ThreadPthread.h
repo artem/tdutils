@@ -42,6 +42,13 @@ class ThreadPthread {
     pthread_create(&thread_, nullptr, run_thread, func.release());
     is_inited_ = true;
   }
+  void set_name(CSlice name) {
+#if defined(_GNU_SOURCE) && defined(__GLIBC_PREREQ)
+#if __GLIBC_PREREQ(2, 12)
+    pthread_setname_np(thread_, name.c_str());
+#endif
+#endif
+  }
   void join() {
     if (is_inited_.get()) {
       is_inited_ = false;
