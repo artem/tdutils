@@ -10,6 +10,7 @@
 #include "td/utils/MovableValue.h"
 #include "td/utils/port/detail/ThreadIdGuard.h"
 #include "td/utils/port/thread_local.h"
+#include "td/utils/Slice.h"
 
 #include <tuple>
 #include <type_traits>
