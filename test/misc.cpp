@@ -18,6 +18,7 @@
 #include "td/utils/StringBuilder.h"
 #include "td/utils/tests.h"
 #include "td/utils/translit.h"
+#include "td/utils/uint128.h"
 #include "td/utils/unicode.h"
 #include "td/utils/utf8.h"
 
@@ -681,5 +682,60 @@ TEST(Misc, Time) {
   }
   for (auto &thread : threads) {
     thread.join();
+  }
+}
+
+TEST(Misc, uint128) {
+  std::vector<uint64> parts = {0,
+                               1,
+                               2000,
+                               2001,
+                               std::numeric_limits<uint64>::max(),
+                               std::numeric_limits<uint64>::max() - 1,
+                               std::numeric_limits<uint32>::max(),
+                               std::numeric_limits<uint32>::max() + 1};
+
+  std::vector<uint128_hands> nums;
+  for (auto hi : parts) {
+    for (auto lo : parts) {
+      nums.push_back({hi, lo});
+    }
+  }
+
+#if TD_HAVE_INT128
+  auto to_intrinsic = [](uint128_hands num) { return uint128_intrinsic(num.hi(), num.lo()); };
+  auto eq = [](uint128_hands a, uint128_intrinsic b) { return a.hi() == b.hi() && a.lo() == b.lo(); };
+  auto ensure_eq = [&](uint128_hands a, uint128_intrinsic b) {
+    if (!eq(a, b)) {
+      LOG(FATAL) << "[" << a.hi() << ";" << a.lo() << "] vs [" << b.hi() << ";" << b.lo() << "]";
+    }
+  };
+#endif
+
+  for (auto a : nums) {
+#if TD_HAVE_INT128
+    auto ia = to_intrinsic(a);
+    ensure_eq(a, ia);
+#endif
+    for (int i = 0; i <= 130; i++) {
+#if TD_HAVE_INT128
+      ensure_eq(a.shl(i), ia.shl(i));
+      ensure_eq(a.shr(i), ia.shr(i));
+      CHECK(a.is_zero() == a.is_zero());
+#endif
+    }
+    for (auto b : nums) {
+#if TD_HAVE_INT128
+      auto ib = to_intrinsic(b);
+      //LOG(ERROR) << ia.hi() << ";" << ia.lo() << " " << ib.hi() << ";" << ib.lo();
+      ensure_eq(a.mult(b), ia.mult(ib));
+      ensure_eq(a.add(b), ia.add(ib));
+      ensure_eq(a.sub(b), ia.sub(ib));
+      if (!b.is_zero()) {
+        ensure_eq(a.div(b), ia.div(ib));
+        ensure_eq(a.mod(b), ia.mod(ib));
+      }
+#endif
+    }
   }
 }

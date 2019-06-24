@@ -229,6 +229,7 @@ set(TDUTILS_SOURCE
   td/utils/translit.h
   td/utils/ThreadSafeCounter.h
   td/utils/type_traits.h
+  td/utils/uint128.h
   td/utils/unicode.h
   td/utils/unique_ptr.h
   td/utils/utf8.h
