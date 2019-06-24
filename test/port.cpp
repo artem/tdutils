@@ -2,6 +2,7 @@
 #include "td/utils/logging.h"
 #include "td/utils/port/FileFd.h"
 #include "td/utils/port/path.h"
+#include "td/utils/port/signals.h"
 #include "td/utils/Slice.h"
 #include "td/utils/tests.h"
 
@@ -81,3 +82,84 @@ TEST(Port, Writev) {
   ASSERT_EQ(content.size(), fd.read(content).move_as_ok());
   ASSERT_EQ(expected_content, content);
 }
+
+#if TD_PORT_POSIX
+#include <signal.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#include <mutex>
+#include <set>
+#include <algorithm>
+
+std::mutex m;
+std::vector<std::string> ptrs;
+std::vector<int *> addrs;
+TD_THREAD_LOCAL int thread_id;
+void on_user_signal(int sig) {
+  int addr;
+  addrs[thread_id] = &addr;
+  char ptr[10];
+  snprintf(ptr, 6, "%d", thread_id);
+  std::unique_lock<std::mutex> guard(m);
+  ptrs.push_back(std::string(ptr));
+}
+
+TEST(Post, SignalsAndThread) {
+  setup_signals_alt_stack().ensure();
+  set_signal_handler(SignalType::User, on_user_signal).ensure();
+  Stage stage;
+  std::vector<std::string> ans = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+  {
+    std::vector<td::thread> threads;
+    int thread_n = 10;
+    std::vector<Stage> stages(thread_n);
+    ptrs.clear();
+    addrs.resize(thread_n);
+    for (int i = 0; i < 10; i++) {
+      threads.emplace_back([&, i] {
+        setup_signals_alt_stack().ensure();
+        if (i != 0) {
+          stages[i].wait(2);
+        }
+        thread_id = i;
+        pthread_kill(pthread_self(), SIGUSR1);
+        if (i + 1 < thread_n) {
+          stages[i + 1].wait(2);
+        }
+      });
+    }
+    for (auto &t : threads) {
+      t.join();
+    }
+    CHECK(ptrs == ans);
+
+    LOG(ERROR) << ptrs;
+    //LOG(ERROR) << std::set<int *>(addrs.begin(), addrs.end()).size();
+    //LOG(ERROR) << addrs;
+  }
+
+  {
+    Stage stage;
+    std::vector<td::thread> threads;
+    int thread_n = 10;
+    ptrs.clear();
+    addrs.resize(thread_n);
+    for (int i = 0; i < 10; i++) {
+      threads.emplace_back([&, i] {
+        stage.wait(thread_n);
+        thread_id = i;
+        pthread_kill(pthread_self(), SIGUSR1);
+        //kill(pid_t(syscall(SYS_gettid)), SIGUSR1);
+      });
+    }
+    for (auto &t : threads) {
+      t.join();
+    }
+    std::sort(ptrs.begin(), ptrs.end());
+    CHECK(ptrs == ans);
+    ASSERT_EQ(10u, std::set<int *>(addrs.begin(), addrs.end()).size());
+    //LOG(ERROR) << addrs;
+  }
+  //ASSERT_EQ(10u, ptrs.size());
+}
+#endif
