@@ -1,3 +1,5 @@
+#pragma once
+
 #include "td/utils/common.h"
 #include "td/utils/bits.h"
 namespace td {
