@@ -9,6 +9,8 @@ class uint128_hands {
   using uint128 = uint128_hands;
   uint128_hands(uint64 hi, uint64 lo) : hi_(hi), lo_(lo) {
   }
+  uint128_hands(uint64 lo) : uint128_hands(0, lo) {
+  }
   uint128_hands() = default;
   uint64 hi() const {
     return hi_;
