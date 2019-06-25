@@ -702,38 +702,75 @@ TEST(Misc, uint128) {
                                std::numeric_limits<uint64>::max() - 1,
                                std::numeric_limits<uint32>::max(),
                                std::numeric_limits<uint32>::max() + 1};
-
-  std::vector<uint128_hands> nums;
-  for (auto hi : parts) {
-    for (auto lo : parts) {
-      nums.push_back({hi, lo});
-    }
-  }
+  std::vector<int64> signed_parts = {0,
+                                     1,
+                                     2000,
+                                     2001,
+                                     -1,
+                                     -2000,
+                                     -2001,
+                                     std::numeric_limits<int64>::max(),
+                                     std::numeric_limits<int64>::max() - 1,
+                                     std::numeric_limits<int64>::min(),
+                                     std::numeric_limits<int64>::min() + 1,
+                                     std::numeric_limits<int32>::max(),
+                                     std::numeric_limits<int32>::max() + 1,
+                                     std::numeric_limits<int32>::max() - 1,
+                                     std::numeric_limits<int32>::min(),
+                                     std::numeric_limits<int32>::min() + 1,
+                                     std::numeric_limits<int32>::min() - 1};
 
 #if TD_HAVE_INT128
-  auto to_intrinsic = [](uint128_hands num) { return uint128_intrinsic(num.hi(), num.lo()); };
-  auto eq = [](uint128_hands a, uint128_intrinsic b) { return a.hi() == b.hi() && a.lo() == b.lo(); };
-  auto ensure_eq = [&](uint128_hands a, uint128_intrinsic b) {
+  auto to_intrinsic = [](uint128_emulated num) { return uint128_intrinsic(num.hi(), num.lo()); };
+  auto eq = [](uint128_emulated a, uint128_intrinsic b) { return a.hi() == b.hi() && a.lo() == b.lo(); };
+  auto ensure_eq = [&](uint128_emulated a, uint128_intrinsic b) {
     if (!eq(a, b)) {
       LOG(FATAL) << "[" << a.hi() << ";" << a.lo() << "] vs [" << b.hi() << ";" << b.lo() << "]";
     }
   };
 #endif
 
+  std::vector<uint128_emulated> nums;
+  for (auto hi : parts) {
+    for (auto lo : parts) {
+      auto a = uint128_emulated(hi, lo);
+#if TD_HAVE_INT128
+      auto ia = uint128_intrinsic(hi, lo);
+      ensure_eq(a, ia);
+#endif
+      nums.push_back({hi, lo});
+    }
+  }
+
   for (auto a : nums) {
 #if TD_HAVE_INT128
     auto ia = to_intrinsic(a);
     ensure_eq(a, ia);
+    CHECK(a.is_zero() == ia.is_zero());
 #endif
     for (int i = 0; i <= 130; i++) {
 #if TD_HAVE_INT128
       ensure_eq(a.shl(i), ia.shl(i));
       ensure_eq(a.shr(i), ia.shr(i));
-      CHECK(a.is_zero() == a.is_zero());
 #endif
     }
-    for (auto b : nums) {
 #if TD_HAVE_INT128
+    for (auto b : parts) {
+      ensure_eq(a.mult(b), ia.mult(b));
+    }
+    for (auto b : signed_parts) {
+      ensure_eq(a.mult_signed(b), ia.mult_signed(b));
+      if (b == 0) {
+        continue;
+      }
+      int64 q, r;
+      a.divmod_signed(b, &q, &r);
+      int64 iq, ir;
+      ia.divmod_signed(b, &iq, &ir);
+      ASSERT_EQ(q, iq);
+      ASSERT_EQ(r, ir);
+    }
+    for (auto b : nums) {
       auto ib = to_intrinsic(b);
       //LOG(ERROR) << ia.hi() << ";" << ia.lo() << " " << ib.hi() << ";" << ib.lo();
       ensure_eq(a.mult(b), ia.mult(ib));
@@ -743,9 +780,17 @@ TEST(Misc, uint128) {
         ensure_eq(a.div(b), ia.div(ib));
         ensure_eq(a.mod(b), ia.mod(ib));
       }
-#endif
     }
+#endif
   }
+
+#if TD_HAVE_INT128
+  for (auto signed_part : signed_parts) {
+    auto a = uint128_emulated::from_signed(signed_part);
+    auto ia = uint128_intrinsic::from_signed(signed_part);
+    ensure_eq(a, ia);
+  }
+#endif
 }
 
 template <template <class T> class HashT, class ValueT>

@@ -4,22 +4,19 @@
 #include "td/utils/bits.h"
 namespace td {
 
-class uint128_hands {
+class uint128_emulated {
  public:
-  using uint128 = uint128_hands;
-  uint128_hands(uint64 hi, uint64 lo) : hi_(hi), lo_(lo) {
+  using uint128 = uint128_emulated;
+  uint128_emulated(uint64 hi, uint64 lo) : hi_(hi), lo_(lo) {
   }
-  uint128_hands(uint64 lo) : uint128_hands(0, lo) {
+  uint128_emulated(uint64 lo) : uint128_emulated(0, lo) {
   }
-  uint128_hands() = default;
+  uint128_emulated() = default;
   uint64 hi() const {
     return hi_;
   }
   uint64 lo() const {
     return lo_;
-  }
-  bool is_negative() const {
-    return static_cast<int64>(hi_) < 0;
   }
   static uint128 from_signed(int64 x) {
     if (x >= 0) {
@@ -75,22 +72,10 @@ class uint128_hands {
     return mult(uint128(0, other));
   }
   uint128 mult_signed(int64 other) const {
-    return uint128(uint128::from_signed(other));
+    return mult(uint128::from_signed(other));
   }
   bool is_zero() const {
     return lo() == 0 && hi() == 0;
-  }
-  int32 count_leading_zeroes() const {
-    if (hi() == 0) {
-      return 64 + count_leading_zeroes64(lo());
-    }
-    return count_leading_zeroes64(hi());
-  }
-  uint128 set_lower_bit() const {
-    return uint128(hi(), lo() | 1);
-  }
-  bool greater_or_equal(uint128 other) const {
-    return hi() > other.hi() || (hi() == other.hi() && lo() >= other.lo());
   }
   uint128 sub(uint128 other) const {
     uint32 carry = 0;
@@ -135,14 +120,6 @@ class uint128_hands {
     return b;
   }
 
-  uint128 negate() const {
-    uint128 res(~hi(), ~lo() + 1);
-    if (res.lo() == 0) {
-      return uint128(res.hi() + 1, 0);
-    }
-    return res;
-  }
-
   void divmod_signed(int64 y, int64 *quot, int64 *rem) const {
     CHECK(y != 0);
     auto x = *this;
@@ -171,6 +148,30 @@ class uint128_hands {
  private:
   uint64 hi_{0};
   uint64 lo_{0};
+
+  bool is_negative() const {
+    return static_cast<int64>(hi_) < 0;
+  }
+
+  int32 count_leading_zeroes() const {
+    if (hi() == 0) {
+      return 64 + count_leading_zeroes64(lo());
+    }
+    return count_leading_zeroes64(hi());
+  }
+  uint128 set_lower_bit() const {
+    return uint128(hi(), lo() | 1);
+  }
+  bool greater_or_equal(uint128 other) const {
+    return hi() > other.hi() || (hi() == other.hi() && lo() >= other.lo());
+  }
+  uint128 negate() const {
+    uint128 res(~hi(), ~lo() + 1);
+    if (res.lo() == 0) {
+      return uint128(res.hi() + 1, 0);
+    }
+    return res;
+  }
 };
 #if TD_HAVE_INT128
 class uint128_intrinsic {
@@ -258,6 +259,6 @@ class uint128_intrinsic {
 #if TD_HAVE_INT128
 using uint128 = uint128_intrinsic;
 #else
-using uint128 = uint128_hands;
+using uint128 = uint128_emulated;
 #endif
 }  // namespace td
