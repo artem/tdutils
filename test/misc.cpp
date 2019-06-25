@@ -824,9 +824,6 @@ template <template <class T> class HashT>
 void test_hash() {
   // Just check that the following compiles
   AbslHashValue(Hasher(), ValueA{1});
-  AbslHashValue(Hasher(), ValueA{1});
-  std::unordered_map<ValueA, int, absl::Hash<ValueA>> x;
-
   HashT<ValueA>()(ValueA{1});
   std::unordered_map<ValueA, int, HashT<ValueA>> s;
   s[ValueA{1}] = 1;
@@ -835,6 +832,7 @@ void test_hash() {
   HashSet<ValueA> su2;
   su2.insert(ValueA{1});
 #if TD_HAVE_ABSL
+  std::unordered_map<ValueA, int, absl::Hash<ValueA>> x;
   absl::flat_hash_map<ValueA, int, HashT<ValueA>> sa;
   sa[ValueA{1}] = 1;
 #endif

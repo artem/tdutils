@@ -25,6 +25,13 @@ class Hasher {
     return hasher;
   }
 
+  template <class A, class B>
+  static Hasher combine(Hasher hasher, const std::pair<A, B> &value) {
+    hasher = AbslHashValue(std::move(hasher), value.first);
+    hasher = AbslHashValue(std::move(hasher), value.first);
+    return hasher;
+  }
+
  private:
   std::size_t hash_{0};
 };
@@ -38,7 +45,7 @@ class TdHash {
   }
 };
 
-#ifdef TD_HAVE_ABSL
+#if TD_HAVE_ABSL
 template <class T>
 using AbslHash = absl::Hash<T>;
 #endif
@@ -49,7 +56,7 @@ decltype(H::combine(std::declval<H>(), std::declval<T>())) AbslHashValue(H hashe
   return H::combine(std::move(hasher), value);
 }
 
-#ifdef TD_HAVE_ABSL
+#if TD_HAVE_ABSL
 template <class T>
 using Hash = AbslHash<T>;
 #else
