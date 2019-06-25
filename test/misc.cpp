@@ -1,6 +1,9 @@
 #include "td/utils/base64.h"
 #include "td/utils/bits.h"
 #include "td/utils/BigNum.h"
+#include "td/utils/Hash.h"
+#include "td/utils/HashMap.h"
+#include "td/utils/HashSet.h"
 #include "td/utils/HttpUrl.h"
 #include "td/utils/invoke.h"
 #include "td/utils/logging.h"
@@ -27,6 +30,11 @@
 #include <limits>
 #include <locale>
 #include <utility>
+#include <unordered_map>
+
+#if TD_HAVE_ABSL
+#include <absl/container/flat_hash_map.h>
+#endif
 
 using namespace td;
 
@@ -738,4 +746,108 @@ TEST(Misc, uint128) {
 #endif
     }
   }
+}
+
+template <template <class T> class HashT, class ValueT>
+Status test_hash(const std::vector<ValueT> &values) {
+  for (size_t i = 0; i < values.size(); i++) {
+    for (size_t j = i; j < values.size(); j++) {
+      auto &a = values[i];
+      auto &b = values[j];
+      auto a_hash = HashT<ValueT>()(a);
+      auto b_hash = HashT<ValueT>()(b);
+      if (a == b) {
+        if (a_hash != b_hash) {
+          return Status::Error("Hash differs for same values");
+        }
+      } else {
+        if (a_hash == b_hash) {
+          return Status::Error("Hash is the same for different values");
+        }
+      }
+    }
+  }
+  return Status::OK();
+}
+
+class BadValue {
+ public:
+  BadValue(size_t value) : value_(value) {
+  }
+
+  template <class H>
+  friend H AbslHashValue(H hasher, const BadValue &value) {
+    return hasher;
+  }
+  bool operator==(const BadValue &other) const {
+    return value_ == other.value_;
+  }
+
+ private:
+  size_t value_;
+};
+
+class ValueA {
+ public:
+  ValueA(size_t value) : value_(value) {
+  }
+  template <class H>
+  friend H AbslHashValue(H hasher, ValueA value) {
+    return H::combine(std::move(hasher), value.value_);
+  }
+  bool operator==(const ValueA &other) const {
+    return value_ == other.value_;
+  }
+
+ private:
+  size_t value_;
+};
+
+class ValueB {
+ public:
+  ValueB(size_t value) : value_(value) {
+  }
+
+  template <class H>
+  friend H AbslHashValue(H hasher, ValueB value) {
+    return H::combine(std::move(hasher), value.value_);
+  }
+  bool operator==(const ValueB &other) const {
+    return value_ == other.value_;
+  }
+
+ private:
+  size_t value_;
+};
+
+template <template <class T> class HashT>
+void test_hash() {
+  // Just check that the following compiles
+  AbslHashValue(Hasher(), ValueA{1});
+  AbslHashValue(Hasher(), ValueA{1});
+  std::unordered_map<ValueA, int, absl::Hash<ValueA>> x;
+
+  HashT<ValueA>()(ValueA{1});
+  std::unordered_map<ValueA, int, HashT<ValueA>> s;
+  s[ValueA{1}] = 1;
+  HashMap<ValueA, int> su;
+  su[ValueA{1}] = 1;
+  HashSet<ValueA> su2;
+  su2.insert(ValueA{1});
+#if TD_HAVE_ABSL
+  absl::flat_hash_map<ValueA, int, HashT<ValueA>> sa;
+  sa[ValueA{1}] = 1;
+#endif
+
+  test_hash<HashT, size_t>({1, 2, 3, 4, 5}).ensure();
+  test_hash<HashT, BadValue>({BadValue{1}, BadValue{2}}).ensure_error();
+  test_hash<HashT, ValueA>({ValueA{1}, ValueA{2}}).ensure();
+  test_hash<HashT, ValueB>({ValueB{1}, ValueB{2}}).ensure();
+}
+
+TEST(Misc, Hasher) {
+  test_hash<TdHash>();
+#if TD_HAVE_ABSL
+  test_hash<AbslHash>();
+#endif
 }
