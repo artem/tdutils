@@ -701,7 +701,7 @@ TEST(Misc, uint128) {
                                std::numeric_limits<uint64>::max(),
                                std::numeric_limits<uint64>::max() - 1,
                                std::numeric_limits<uint32>::max(),
-                               std::numeric_limits<uint32>::max() + 1};
+                               static_cast<uint64>(std::numeric_limits<uint32>::max()) + 1};
   std::vector<int64> signed_parts = {0,
                                      1,
                                      2000,
@@ -714,11 +714,11 @@ TEST(Misc, uint128) {
                                      std::numeric_limits<int64>::min(),
                                      std::numeric_limits<int64>::min() + 1,
                                      std::numeric_limits<int32>::max(),
-                                     std::numeric_limits<int32>::max() + 1,
+                                     static_cast<int64>(std::numeric_limits<int32>::max()) + 1,
                                      std::numeric_limits<int32>::max() - 1,
                                      std::numeric_limits<int32>::min(),
                                      std::numeric_limits<int32>::min() + 1,
-                                     std::numeric_limits<int32>::min() - 1};
+                                     static_cast<int64>(std::numeric_limits<int32>::min()) - 1};
 
 #if TD_HAVE_INT128
   auto to_intrinsic = [](uint128_emulated num) { return uint128_intrinsic(num.hi(), num.lo()); };
