@@ -467,6 +467,11 @@ CSlice IPAddress::ipv4_to_str(uint32 ipv4) {
   return ::td::get_ip_str(AF_INET, &ipv4);
 }
 
+CSlice IPAddress::ipv6_to_str(Slice ipv6) {
+  CHECK(ipv6.size() == 16);
+  return ::td::get_ip_str(AF_INET6, ipv6.ubegin());
+}
+
 Slice IPAddress::get_ip_str() const {
   if (!is_valid()) {
     return Slice("0.0.0.0");
