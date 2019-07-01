@@ -36,7 +36,7 @@ struct PrintFlags {
 StringBuilder &operator<<(StringBuilder &sb, const PrintFlags &print_flags) {
   auto flags = print_flags.flags;
   if (flags & ~(FileFd::Write | FileFd::Read | FileFd::Truncate | FileFd::Create | FileFd::Append | FileFd::CreateNew |
-                FileFd::Direct)) {
+                FileFd::Direct | FileFd::WinStat)) {
     return sb << "opened with invalid flags " << flags;
   }
 
@@ -72,6 +72,9 @@ StringBuilder &operator<<(StringBuilder &sb, const PrintFlags &print_flags) {
   if (flags & FileFd::Direct) {
     sb << " for direct io";
   }
+  if (flags & FileFd::WinStat) {
+    sb << " for stat";
+  }
   return sb;
 }
 
@@ -93,7 +96,7 @@ FileFd::FileFd(unique_ptr<detail::FileFdImpl> impl) : impl_(std::move(impl)) {
 }
 
 Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
-  if (flags & ~(Write | Read | Truncate | Create | Append | CreateNew | Direct)) {
+  if (flags & ~(Write | Read | Truncate | Create | Append | CreateNew | Direct | WinStat)) {
     return Status::Error(PSLICE() << "File \"" << filepath << "\" has failed to be " << PrintFlags{flags});
   }
 
@@ -178,7 +181,10 @@ Result<FileFd> FileFd::open(CSlice filepath, int32 flags, int32 mode) {
 
   DWORD native_flags = 0;
   if (flags & Direct) {
-    flags |= FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING;
+    native_flags |= FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING;
+  }
+  if (flags & WinStat) {
+    native_flags |= FILE_FLAG_BACKUP_SEMANTICS;
   }
 #if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP | WINAPI_PARTITION_SYSTEM)
   auto handle =
