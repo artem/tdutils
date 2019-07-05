@@ -8,6 +8,7 @@
 #include "td/utils/Status.h"
 #include "td/utils/tl_parsers.h"
 #include "td/utils/tl_storers.h"
+#include "td/utils/Variant.h"
 
 #include <type_traits>
 #include <unordered_set>
@@ -39,18 +40,19 @@
 
 #define END_PARSE_FLAGS()                                                   \
   CHECK(bit_offset_parse < 31);                                             \
-  CHECK((flags_parse & ~((1 << bit_offset_parse) - 1)) == 0)                \
+  LOG_CHECK((flags_parse & ~((1 << bit_offset_parse) - 1)) == 0)            \
       << flags_parse << " " << bit_offset_parse << " " << parser.version(); \
   }                                                                         \
   while (false)
 
-#define END_PARSE_FLAGS_GENERIC()                                                                       \
-  CHECK(bit_offset_parse < 31);                                                                         \
-  CHECK((flags_parse & ~((1 << bit_offset_parse) - 1)) == 0) << flags_parse << " " << bit_offset_parse; \
-  }                                                                                                     \
+#define END_PARSE_FLAGS_GENERIC()                                                                           \
+  CHECK(bit_offset_parse < 31);                                                                             \
+  LOG_CHECK((flags_parse & ~((1 << bit_offset_parse) - 1)) == 0) << flags_parse << " " << bit_offset_parse; \
+  }                                                                                                         \
   while (false)
 
 namespace td {
+
 template <class StorerT>
 void store(bool x, StorerT &storer) {
   storer.store_binary(static_cast<int32>(x));
@@ -179,6 +181,29 @@ std::enable_if_t<!std::is_enum<T>::value> parse(T &val, ParserT &parser) {
   val.parse(parser);
 }
 
+template <class... Types, class StorerT>
+void store(const Variant<Types...> &variant, StorerT &storer) {
+  store(variant.get_offset(), storer);
+  variant.visit([&storer](auto &&value) {
+    using td::store;
+    store(value, storer);
+  });
+}
+template <class... Types, class ParserT>
+void parse(Variant<Types...> &variant, ParserT &parser) {
+  auto type_offset = parser.fetch_int();
+  if (type_offset < 0 || type_offset >= static_cast<int32>(sizeof...(Types))) {
+    return parser.set_error("Invalid type");
+  }
+  variant.for_each([type_offset, &parser, &variant](int offset, auto *ptr) {
+    using T = std::decay_t<decltype(*ptr)>;
+    if (offset == type_offset) {
+      variant = T();
+      parse(variant.template get<T>(), parser);
+    }
+  });
+}
+
 template <class T>
 string serialize(const T &object) {
   TlStorerCalcLength calc_length;
@@ -209,4 +234,5 @@ TD_WARN_UNUSED_RESULT Status unserialize(T &object, Slice data) {
   parser.fetch_end();
   return parser.get_status();
 }
+
 }  // namespace td

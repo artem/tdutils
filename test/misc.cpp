@@ -1,6 +1,10 @@
+#include "td/utils/as.h"
 #include "td/utils/base64.h"
 #include "td/utils/bits.h"
 #include "td/utils/BigNum.h"
+#include "td/utils/bits.h"
+#include "td/utils/CancellationToken.h"
+#include "td/utils/common.h"
 #include "td/utils/Hash.h"
 #include "td/utils/HashMap.h"
 #include "td/utils/HashSet.h"
@@ -98,7 +102,7 @@ TEST(Misc, errno_tls_bug) {
 #if !TD_THREAD_UNSUPPORTED && !TD_EVENTFD_UNSUPPORTED
   EventFd test_event_fd;
   test_event_fd.init();
-  std::atomic<int> s(0);
+  std::atomic<int> s{0};
   s = 1;
   td::thread th([&] {
     while (s != 1) {
@@ -893,4 +897,23 @@ TEST(Misc, Hasher) {
 #if TD_HAVE_ABSL
   test_hash<AbslHash>();
 #endif
+}
+TEST(Misc, CancellationToken) {
+  CancellationTokenSource source;
+  source.cancel();
+  auto token1 = source.get_cancellation_token();
+  auto token2 = source.get_cancellation_token();
+  CHECK(!token1);
+  source.cancel();
+  CHECK(token1);
+  CHECK(token2);
+  auto token3 = source.get_cancellation_token();
+  CHECK(!token3);
+  source.cancel();
+  CHECK(token3);
+
+  auto token4 = source.get_cancellation_token();
+  CHECK(!token4);
+  source = CancellationTokenSource{};
+  CHECK(token4);
 }

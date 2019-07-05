@@ -83,6 +83,7 @@ set(TDUTILS_SOURCE
   td/utils/BigNum.cpp
   td/utils/buffer.cpp
   td/utils/BufferedUdp.cpp
+  td/utils/check.cpp
   td/utils/crypto.cpp
   td/utils/FileLog.cpp
   td/utils/filesystem.cpp
@@ -101,6 +102,7 @@ set(TDUTILS_SOURCE
   td/utils/StackAllocator.cpp
   td/utils/Status.cpp
   td/utils/StringBuilder.cpp
+  td/utils/tests.cpp
   td/utils/Time.cpp
   td/utils/Timer.cpp
   td/utils/tests.cpp
@@ -152,6 +154,7 @@ set(TDUTILS_SOURCE
   td/utils/port/detail/WineventPoll.h
 
   td/utils/AesCtrByteFlow.h
+  td/utils/as.h
   td/utils/base64.h
   td/utils/benchmark.h
   td/utils/BigNum.h
@@ -161,7 +164,9 @@ set(TDUTILS_SOURCE
   td/utils/BufferedReader.h
   td/utils/BufferedUdp.h
   td/utils/ByteFlow.h
+  td/utils/CancellationToken.h
   td/utils/ChangesProcessor.h
+  td/utils/check.h
   td/utils/Closure.h
   td/utils/common.h
   td/utils/ConcurrentHashTable.h
@@ -230,6 +235,7 @@ set(TDUTILS_SOURCE
   td/utils/ThreadSafeCounter.h
   td/utils/type_traits.h
   td/utils/uint128.h
+  td/utils/UInt.h
   td/utils/unicode.h
   td/utils/unique_ptr.h
   td/utils/utf8.h

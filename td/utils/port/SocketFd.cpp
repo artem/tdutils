@@ -1,5 +1,6 @@
 #include "td/utils/port/SocketFd.h"
 
+#include "td/utils/common.h"
 #include "td/utils/logging.h"
 #include "td/utils/misc.h"
 #include "td/utils/port/PollFlags.h"
@@ -79,6 +80,7 @@ class SocketFdImpl : private Iocp::Callback {
   }
 
   Result<size_t> write(Slice data) {
+    // LOG(ERROR) << "Write: " << format::as_hex_dump<0>(data);
     output_writer_.append(data);
     if (is_write_waiting_) {
       auto lock = lock_.lock();
@@ -96,6 +98,8 @@ class SocketFdImpl : private Iocp::Callback {
     auto res = input_reader_.advance(td::min(slice.size(), input_reader_.size()), slice);
     if (res == 0) {
       get_poll_info().clear_flags(PollFlags::Read());
+    } else {
+      // LOG(ERROR) << "Read: " << format::as_hex_dump<0>(Slice(slice.substr(0, res)));
     }
     return res;
   }
@@ -462,7 +466,7 @@ Status get_socket_pending_error(const NativeFd &fd, WSAOVERLAPPED *overlapped, S
   // https://stackoverflow.com/questions/28925003/calling-wsagetlasterror-from-an-iocp-thread-return-incorrect-result
   DWORD num_bytes = 0;
   DWORD flags = 0;
-  bool success = WSAGetOverlappedResult(fd.socket(), overlapped, &num_bytes, false, &flags);
+  BOOL success = WSAGetOverlappedResult(fd.socket(), overlapped, &num_bytes, false, &flags);
   if (success) {
     LOG(ERROR) << "WSAGetOverlappedResult succeded after " << iocp_error;
     return iocp_error;

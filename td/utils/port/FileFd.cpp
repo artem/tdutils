@@ -461,8 +461,9 @@ NativeFd FileFd::move_as_native_fd() {
   return res;
 }
 
-int64 FileFd::get_size() {
-  return stat().size_;
+Result<int64> FileFd::get_size() const {
+  TRY_RESULT(s, stat());
+  return s.size_;
 }
 
 #if TD_PORT_WINDOWS
@@ -472,7 +473,7 @@ static uint64 filetime_to_unix_time_nsec(LONGLONG filetime) {
 }
 #endif
 
-Stat FileFd::stat() const {
+Result<Stat> FileFd::stat() const {
   CHECK(!empty());
 #if TD_PORT_POSIX
   return detail::fstat(get_native_fd().fd());
@@ -482,19 +483,17 @@ Stat FileFd::stat() const {
   FILE_BASIC_INFO basic_info;
   auto status = GetFileInformationByHandleEx(get_native_fd().fd(), FileBasicInfo, &basic_info, sizeof(basic_info));
   if (!status) {
-    auto error = OS_ERROR("Stat failed");
-    LOG(FATAL) << error;
+    return OS_ERROR("Get FileBasicInfo failed");
   }
   res.atime_nsec_ = filetime_to_unix_time_nsec(basic_info.LastAccessTime.QuadPart);
   res.mtime_nsec_ = filetime_to_unix_time_nsec(basic_info.LastWriteTime.QuadPart);
   res.is_dir_ = (basic_info.FileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-  res.is_reg_ = true;
+  res.is_reg_ = !res.is_dir_;  // TODO this is still wrong
 
   FILE_STANDARD_INFO standard_info;
   status = GetFileInformationByHandleEx(get_native_fd().fd(), FileStandardInfo, &standard_info, sizeof(standard_info));
   if (!status) {
-    auto error = OS_ERROR("Stat failed");
-    LOG(FATAL) << error;
+    return OS_ERROR("Get FileStandardInfo failed");
   }
   res.size_ = standard_info.EndOfFile.QuadPart;
 
@@ -505,7 +504,11 @@ Stat FileFd::stat() const {
 Status FileFd::sync() {
   CHECK(!empty());
 #if TD_PORT_POSIX
-  if (fsync(get_native_fd().fd()) != 0) {
+#if TD_DARWIN
+  if (detail::skip_eintr([&] { return fcntl(get_native_fd().fd(), F_FULLFSYNC); }) == -1) {
+#else
+  if (detail::skip_eintr([&] { return fsync(get_native_fd().fd()); }) != 0) {
+#endif
 #elif TD_PORT_WINDOWS
   if (FlushFileBuffers(get_native_fd().fd()) == 0) {
 #endif

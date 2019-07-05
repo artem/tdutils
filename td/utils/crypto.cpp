@@ -645,9 +645,11 @@ uint32 crc32(Slice data) {
 uint32 crc32c(Slice data) {
   return crc32c::Crc32c(data.data(), data.size());
 }
+
 uint32 crc32c_extend(uint32 old_crc, Slice data) {
   return crc32c::Extend(old_crc, data.ubegin(), data.size());
 }
+
 namespace {
 unsigned gf32_matrix_times(uint32 *matrix, uint32 vector) {
   unsigned sum = 0;

@@ -1,8 +1,7 @@
 #pragma once
 
+#include "td/utils/common.h"
 #include "td/utils/Slice-decl.h"
-
-#include "td/utils/logging.h"
 
 #include <cstring>
 #include <type_traits>
@@ -298,6 +297,7 @@ inline std::size_t SliceHash::operator()(Slice slice) const {
 inline Slice as_slice(Slice slice) {
   return slice;
 }
+
 inline MutableSlice as_slice(MutableSlice slice) {
   return slice;
 }
@@ -306,17 +306,27 @@ template <size_t N>
 Slice UInt<N>::as_slice() const {
   return Slice(raw, N / 8);
 }
-template <size_t N>
+
 MutableSlice UInt<N>::as_slice() {
   return MutableSlice(raw, N / 8);
 }
+
 template <size_t N>
 Slice as_slice(const UInt<N> &value) {
   return value.as_slice();
 }
+
 template <size_t N>
 MutableSlice as_slice(UInt<N> &value) {
   return value.as_slice();
+}
+
+inline Slice as_slice(const string &str) {
+  return str;
+}
+
+inline MutableSlice as_slice(string &str) {
+  return str;
 }
 
 }  // namespace td
