@@ -82,7 +82,7 @@ class SocketFdImpl : private Iocp::Callback {
   Result<size_t> write(Slice data) {
     // LOG(ERROR) << "Write: " << format::as_hex_dump<0>(data);
     output_writer_.append(data);
-    return write_finish();
+    return write_finish(data.size());
   }
 
   Result<size_t> writev(Span<IoSlice> slices) {
@@ -98,17 +98,17 @@ class SocketFdImpl : private Iocp::Callback {
       left_size -= slice.size();
     }
 
-    return write_finish();
+    return write_finish(total_size);
   }
 
-  Result<size_t> write_finish() {
+  Result<size_t> write_finish(size_t total_size) {
     if (is_write_waiting_) {
       auto lock = lock_.lock();
       is_write_waiting_ = false;
       lock.reset();
       notify_iocp_write();
     }
-    return data.size();
+    return total_size;
   }
 
   Result<size_t> read(MutableSlice slice) {
@@ -222,7 +222,7 @@ class SocketFdImpl : private Iocp::Callback {
       it.confirm_read(src.size());
     }
     int status =
-        WSASend(get_native_fd().socket(), &buf, narrow_cast<DWORD>(buf_i), nullptr, 0, &write_overlapped_, nullptr);
+        WSASend(get_native_fd().socket(), buf, narrow_cast<DWORD>(buf_i), nullptr, 0, &write_overlapped_, nullptr);
     if (status == 0 || check_status("Failed to write to connection")) {
       inc_refcnt();
       is_write_active_ = true;
