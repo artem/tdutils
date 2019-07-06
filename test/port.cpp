@@ -101,7 +101,7 @@ TEST(Port, Writev) {
   fd.close();
   fd = FileFd::open(test_file_path, FileFd::Read).move_as_ok();
   Slice expected_content = "abcdefghi";
-  ASSERT_EQ(static_cast<int64>(expected_content.size()), fd.get_size());
+  ASSERT_EQ(static_cast<int64>(expected_content.size()), fd.get_size().ok());
   std::string content(expected_content.size(), '\0');
   ASSERT_EQ(content.size(), fd.read(content).move_as_ok());
   ASSERT_EQ(expected_content, content);
@@ -131,7 +131,6 @@ void on_user_signal(int sig) {
 TEST(Post, SignalsAndThread) {
   setup_signals_alt_stack().ensure();
   set_signal_handler(SignalType::User, on_user_signal).ensure();
-  Stage stage;
   std::vector<std::string> ans = {"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
   {
     std::vector<td::thread> threads;

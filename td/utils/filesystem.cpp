@@ -59,22 +59,6 @@ Result<BufferSlice> read_file(CSlice path, int64 size, int64 offset) {
 Result<string> read_file_str(CSlice path, int64 size, int64 offset) {
   return read_file_impl<string>(path, size, offset);
 }
-Result<std::string> read_file_str(CSlice path, int64 size, int64 offset) {
-  TRY_RESULT(from_file, FileFd::open(path, FileFd::Read));
-  if (size == -1) {
-    size = from_file.get_size() - offset;
-  }
-  if (size < 0) {
-    return Status::Error("Failed to read file: invalid size or offset");
-  }
-  std::string content(static_cast<size_t>(size), '\0');
-  TRY_RESULT(got_size, from_file.pread(content, offset));
-  if (got_size != static_cast<size_t>(size)) {
-    return Status::Error("Failed to read file");
-  }
-  from_file.close();
-  return std::move(content);
-}
 
 // Very straightforward function. Don't expect much of it.
 Status copy_file(CSlice from, CSlice to, int64 size) {

@@ -113,7 +113,7 @@ inline string rand_string(char from, char to, int len) {
   return res;
 }
 
-inline vector<string> rand_split(string str) {
+inline vector<string> rand_split(Slice str) {
   vector<string> res;
   size_t pos = 0;
   while (pos < str.size()) {
